@@ -1,6 +1,6 @@
 
 # Dataset
-REPR-RankingShap/RankingShap/data/
+RankingShap/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
