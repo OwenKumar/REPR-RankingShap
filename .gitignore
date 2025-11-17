@@ -2,6 +2,13 @@
 # Dataset
 RankingShap/data/
 
+# Environment
+rshap/
+
+# CSV files
+masking_comp_background_samples_exposure_difference.csv
+masking_comp_background_samples_rank_similarity.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
