@@ -80,15 +80,25 @@ background_data = BackgroundData(
 )
 
 rank_similarity_coefficient = lambda x, y: kendalltau(x, y)[0]
+weighted_rank_similarity_coefficient = lambda x, y: np.sum((y - x)/(np.log2(x)))
 
 # Define all the explainers
-ranking_shap_explainer = RankingShap(
+ranking_shapK_explainer = RankingShap(
     permutation_sampler="kernel",
     background_data=background_data.background_summary,
     original_model=model.predict,
     explanation_size=explanation_size,
-    name="rankingshap",
+    name="rankingshapK",
     rank_similarity_coefficient=rank_similarity_coefficient,
+)
+
+ranking_shapW_explainer = RankingShap(
+    permutation_sampler="kernel",
+    background_data=background_data.background_summary,
+    original_model=model.predict,
+    explanation_size=explanation_size,
+    name="rankingshapW",
+    rank_similarity_coefficient=weighted_rank_similarity_coefficient,
 )
 
 
@@ -145,7 +155,8 @@ explainers = [
     random_explainer,
     aggregated_shap_explainer,
     aggregated_lime_explainer,
-    ranking_shap_explainer,
+    ranking_shapK_explainer,
+    ranking_shapW_explainer,
     greedy_explainer_0_iter,
     ranking_lime_explainer,
 ]

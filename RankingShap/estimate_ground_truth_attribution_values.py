@@ -6,6 +6,7 @@ from approaches.ranking_shap import RankingShap
 from scipy.stats import kendalltau
 import pandas as pd
 from pathlib import Path
+import numpy as np
 
 
 import argparse
@@ -71,7 +72,6 @@ test_data = get_data(data_file=data_directory / "test.txt")
 num_features = len(test_data[0][0])
 
 rank_similarity_coefficient = lambda x, y: kendalltau(x, y)[0]
-
 
 # We assume that the model has been trained and saved in a model file
 model_file = str(args.model_file)
