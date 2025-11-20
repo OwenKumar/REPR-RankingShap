@@ -47,7 +47,10 @@ def new_model_predict_val(
         # Determine ranking for adjusted document feature vectors
         new_pred = original_model_predict(features_background_sample)
         new_rank = rank_list(new_pred)
-        scores.append(similarity_coefficient(og_rank, new_rank))
+        print(new_rank)
+        score = similarity_coefficient(og_rank, new_rank)
+        print(score)
+        scores.append(score)
     return np.array(scores)
 
 
