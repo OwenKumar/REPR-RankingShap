@@ -80,7 +80,7 @@ background_data = BackgroundData(
 )
 
 rank_similarity_coefficient = lambda x, y: kendalltau(x, y)[0]
-weighted_rank_similarity_coefficient = lambda x, y: np.sum((y - x)/(np.log2(x)))
+weighted_rank_similarity_coefficient = lambda x, y: np.sum((y - x)/(np.log2(x + np.finfo(float).eps)))
 
 # Define all the explainers
 ranking_shapK_explainer = RankingShap(
