@@ -1,5 +1,9 @@
 import pandas as pd
 from utils.helper_functions import rank_based_on_column_per_query
+from evaluate_explanations import calculate_validity_completeness
+from scipy.stats import kendalltau
+from utils.helper_functions import get_queryids_as_list, get_documents_per_query
+import numpy as np
 
 
 def get_estimated_ground_truth_feature_importance(file):
@@ -11,6 +15,9 @@ def get_estimated_ground_truth_feature_importance(file):
 
 def eval_feature_attribution(
     attributes_to_evaluate,
+    model,
+    background,
+    eval_data,
     ground_truth_file_path="../results/feature_attributes/"
     + "attribution_values_for_evaluation.csv",
 ):
@@ -65,13 +72,53 @@ def eval_feature_attribution(
 
     # results_df = metrics_on_subset(attribution_df, results_df, suffix_metric="")
 
-    # top-k_metrics
-    for i in [1, 3, 5, 7, 10]:
-        top_k = attribution_df[attribution_df.exp_ranked <= i] # Take the top k explanation features
-        print(top_k)
-        print(top_k["feature_number"])
-        print(top_k["feature_number"].to_list())
-        break
-        results_df = metrics_on_subset(top_k, results_df, suffix_metric="@" + str(i))
 
-    return results_df
+    EX, _, Eqids = eval_data
+    queries = get_queryids_as_list(Eqids)
+    
+
+    print("Evaluating all ", len(queries), " queries")
+
+    # keep track of query start position in test set
+    list_trckr = 0
+    i = 1
+    qid_count_list = get_documents_per_query(Eqids)
+
+    results = [[], [], [], [], []]
+    k_s = [1, 3, 5, 7, 10]
+
+    # select all query document pairs for a certain query and calculate the validity and completeness
+    for query in queries[:3]:
+        query_len = qid_count_list[query]
+        # Get the query to pass 
+        current_query = EX[list_trckr : (list_trckr + query_len)]
+
+        # top-k_metrics
+        for i in range(len(k_s)):
+            top_k = attribution_df[attribution_df.exp_ranked <= k_s[i]] # Take the top k explanation features
+            
+            
+            val_kendall, comp_kendall = calculate_validity_completeness(
+                        current_query, # done
+                        model, # done
+                        top_k, # done
+                        background_data=background, # done
+                        mixed_type_input=False, # done
+                        rank_similarity_coefficient=lambda x, y: kendalltau(x, y)[0],
+                        )
+            # val_expo, comp_expo = calculate_validity_completeness(
+            #             current_query, # done
+            #             model, # done
+            #             top_k, # done
+            #             background_data=background, # done
+            #             mixed_type_input=False, # done
+            #             rank_similarity_coefficient=lambda x, y: ???,
+            #             )
+
+            results[i].append([val_kendall, comp_kendall])
+            # results_df = metrics_on_subset(top_k, results_df, suffix_metric="@" + str(i))
+
+    print(results)
+    results = np.mean(np.asarray(results).transpose((0, 2, 1)), axis=2)
+    print(results)
+    return results

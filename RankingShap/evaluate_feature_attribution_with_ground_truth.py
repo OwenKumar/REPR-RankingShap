@@ -3,6 +3,10 @@ from evaluation.evaluate2_feature_attribution import eval_feature_attribution
 from pathlib import Path
 
 import argparse
+import lightgbm
+import numpy as np
+from utils.background_data import BackgroundData
+from utils.helper_functions import get_data
 
 parser = argparse.ArgumentParser(description="Your script description")
 
@@ -23,11 +27,46 @@ parser.add_argument(
     "--test", action="store_true", help="If true uses test files for evaluation"
 )
 
+parser.add_argument(
+    "--model_file",
+    required=True,
+    type=str,
+    help="Path to the model file of the model that we want to approximate the feature importance for",
+)
+
 
 args = parser.parse_args()
 print(args, flush=True)
 
 dataset = args.dataset
+
+# ---- arguments for metrics
+
+# We assume that the model has been trained and saved in a model file
+model_file = args.model_file
+
+model = lightgbm.Booster(
+    model_file=(str((Path("results/model_files/") / model_file).absolute()))
+)
+
+background_data = BackgroundData(
+    np.load(
+        Path("results/background_data_files/train_background_data_" + dataset + ".npy")
+    ),
+    summarization_type=None,
+)
+
+# Get train, eval_data
+data_directory = Path("data/" + dataset + "/Fold1/")
+# train_data = get_data(data_file=data_directory / "train.txt")
+test_data = get_data(data_file=data_directory / "test.txt")
+# eval_data = get_data(data_file=data_directory / "vali.txt")
+
+
+
+# -------- end arguments for metrics
+
+
 file_name_ground_truth = args.file_name_ground_truth
 path_to_attribution_folder = Path("results/results_" + dataset + "/feature_attributes/")
 
@@ -36,13 +75,13 @@ path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_
 
 approaches = [
     "rankingshapK",
-    "rankingshapW",
-    "greedy_iter",
-    "greedy_iter_full",
-    "pointwise_lime",
-    "pointwise_shap",
-    "random",
-    "rankinglime",
+    # "rankingshapW",
+    # "greedy_iter",
+    # "greedy_iter_full",
+    # "pointwise_lime",
+    # "pointwise_shap",
+    # "random",
+    # "rankinglime",
 ]
 if args.test:
     approaches = [a + "_test" for a in approaches]
@@ -57,6 +96,9 @@ for approach in approaches:
 
     attribution_evaluation_per_query = eval_feature_attribution(
         attributes_to_evaluate=path_to_attribute_values,
+        model = model,
+        eval_data=test_data,
+        background = background_data.background_summary,
         ground_truth_file_path=path_to_ground_truth_attributes,
     )
 
@@ -64,6 +106,7 @@ for approach in approaches:
     mean_attribute_evaluation["approach"] = approach
     eval_df.append(mean_attribute_evaluation)
 
+# TODO update these fields vv
 
 mean_attribute_evaluation = pd.DataFrame(eval_df)
 
