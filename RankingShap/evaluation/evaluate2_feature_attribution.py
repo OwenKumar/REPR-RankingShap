@@ -1,6 +1,6 @@
 import pandas as pd
 from utils.helper_functions import rank_based_on_column_per_query
-from evaluate_explanations import calculate_validity_completeness
+from evaluation.evaluate_explanations import calculate_validity_completeness
 from scipy.stats import kendalltau
 from utils.helper_functions import get_queryids_as_list, get_documents_per_query
 import numpy as np
