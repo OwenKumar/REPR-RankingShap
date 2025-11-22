@@ -96,7 +96,7 @@ for approach in approaches:
 
     attribution_evaluation_per_query = eval_feature_attribution(
         attributes_to_evaluate=path_to_attribute_values,
-        model = model,
+        model = model.predict,
         eval_data=test_data,
         background = background_data.background_summary,
         ground_truth_file_path=path_to_ground_truth_attributes,
