@@ -107,18 +107,18 @@ for approach in approaches:
     
 
     df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1]})
-    print(df)
+
     df.insert(0, "approach", ["{}@{}".format(approach, i) for i in [1,3,5,7,10] ])
 
-    print(df)
+
 
     eval_df.append(df)
 
-# TODO update these fields vv
+
 
 mean_attribute_evaluation = pd.concat(eval_df)
 
-# mean_attribute_evaluation = mean_attribute_evaluation.set_index(["approach"])
+mean_attribute_evaluation = mean_attribute_evaluation.set_index(["approach"])
 
 # evaluation_for_table = mean_attribute_evaluation[
 #     [

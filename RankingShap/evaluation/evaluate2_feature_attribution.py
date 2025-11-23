@@ -99,11 +99,10 @@ def eval_feature_attribution(
             
             
             val_kendall, comp_kendall = calculate_validity_completeness(
-                        current_query, # done
-                        model, # done
-                        top_k, # done
-                        background_data=background, # done
-                        mixed_type_input=False, # done
+                        current_query, 
+                        top_k, 
+                        background_data=background,
+                        mixed_type_input=False, 
                         rank_similarity_coefficient=lambda x, y: kendalltau(x, y)[0],
                         )
             # val_expo, comp_expo = calculate_validity_completeness(
@@ -116,10 +115,10 @@ def eval_feature_attribution(
             #             )
 
             results[i].append([val_kendall, comp_kendall])
-            # results_df = metrics_on_subset(top_k, results_df, suffix_metric="@" + str(i))
 
-    print(results)
+        # Update list_tracker
+        list_trckr += query_len
+
+    
     results = np.mean(np.asarray(results).transpose((0, 2, 1)), axis=2)
-    print(results)
-    print(results.shape)
     return results
