@@ -75,7 +75,7 @@ path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_
 
 approaches = [
     "rankingshapK",
-    # "rankingshapW",
+    "rankingshapW",
     # "greedy_iter",
     # "greedy_iter_full",
     # "pointwise_lime",
@@ -108,7 +108,7 @@ for approach in approaches:
 
     df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1]})
     print(df)
-    df.insert(0, "approach", [(approach + "@" + i) for i in [1,3,5,7,10] ])
+    df.insert(0, "approach", ["{}@{}".format(approach, i) for i in [1,3,5,7,10] ])
 
     print(df)
 
