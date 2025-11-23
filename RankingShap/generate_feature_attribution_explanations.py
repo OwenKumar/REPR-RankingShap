@@ -161,8 +161,8 @@ explainers = [
     ranking_lime_explainer,
 ]
 
-if dataset == "MQ2008":
-    explainers.append(greedy_explainer_0_full)
+# if dataset == "MQ2008":
+#     explainers.append(greedy_explainer_0_full)
 
 for exp in explainers:
     if test:
