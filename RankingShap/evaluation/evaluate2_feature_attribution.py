@@ -95,7 +95,7 @@ def eval_feature_attribution(
 
         # top-k_metrics
         for i in range(len(k_s)):
-            top_k = attribution_df[attribution_df.exp_ranked <= k_s[i]] # Take the top k explanation features
+            top_k = attribution_df[attribution_df.exp_ranked <= k_s[i]]['feature_number'].values # Take the top k explanation features
             
             print(top_k) #TODO testing
 
