@@ -87,6 +87,9 @@ def eval_feature_attribution(
     results = [[], [], [], [], []]
     k_s = [1, 3, 5, 7, 10]
 
+    exposure_diff = lambda x, y: np.sum(np.abs(1/(np.log2(x + np.finfo(float).eps)) - 1/(np.log2(y + np.finfo(float).eps))))
+    kendall_tau = lambda x, y: kendalltau(x, y)[0]
+
     # select all query document pairs for a certain query and calculate the validity and completeness
     for query in queries:
         query_len = qid_count_list[query]
@@ -104,18 +107,18 @@ def eval_feature_attribution(
                         top_k, 
                         background_data=background,
                         mixed_type_input=False, 
-                        rank_similarity_coefficient=lambda x, y: kendalltau(x, y)[0],
+                        rank_similarity_coefficient=kendall_tau,
                         )
-            # val_expo, comp_expo = calculate_validity_completeness(
-            #             current_query, # done
-            #             model, # done
-            #             top_k, # done
-            #             background_data=background, # done
-            #             mixed_type_input=False, # done
-            #             rank_similarity_coefficient=lambda x, y: ???,
-            #             )
+            val_expo, comp_expo = calculate_validity_completeness(
+                        current_query, 
+                        model, 
+                        top_k, 
+                        background_data=background, 
+                        mixed_type_input=False, 
+                        rank_similarity_coefficient=exposure_diff,
+                        )
 
-            results[i].append([val_kendall, comp_kendall])
+            results[i].append([val_kendall, comp_kendall, val_expo, comp_expo])
 
         # Update list_tracker
         list_trckr += query_len

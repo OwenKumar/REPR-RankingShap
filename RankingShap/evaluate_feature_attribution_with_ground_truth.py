@@ -106,7 +106,8 @@ for approach in approaches:
     # mean_attribute_evaluation["approach"] = approach
     
 
-    df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1]})
+    df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1], \
+                       'Pre_exp': mean_attribute_evaluation[:, 2], 'Del_exp': mean_attribute_evaluation[:, 3]})
 
     df.insert(0, "approach", ["{}@{}".format(approach, i) for i in [1,3,5,7,10] ])
 
