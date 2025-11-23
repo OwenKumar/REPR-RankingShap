@@ -94,7 +94,7 @@ for approach in approaches:
         approach + "_eval" + ".csv"
     )
 
-    attribution_evaluation_per_query = eval_feature_attribution(
+    mean_attribute_evaluation = eval_feature_attribution(
         attributes_to_evaluate=path_to_attribute_values,
         model = model.predict,
         eval_data=test_data,
@@ -102,9 +102,14 @@ for approach in approaches:
         ground_truth_file_path=path_to_ground_truth_attributes,
     )
 
-    mean_attribute_evaluation = attribution_evaluation_per_query.mean()
-    mean_attribute_evaluation["approach"] = approach
-    eval_df.append(mean_attribute_evaluation)
+    # mean_attribute_evaluation = attribution_evaluation_per_query.mean()
+    # mean_attribute_evaluation["approach"] = approach
+    
+
+    df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1]})
+    df["approach"] = approach
+
+    eval_df.append(df)
 
 # TODO update these fields vv
 
@@ -112,37 +117,37 @@ mean_attribute_evaluation = pd.DataFrame(eval_df)
 
 mean_attribute_evaluation = mean_attribute_evaluation.set_index(["approach"])
 
-evaluation_for_table = mean_attribute_evaluation[
-    [
-        "spearmans_footrule_metric",
-        "spearmans_footrule_metric@3",
-        "spearmans_footrule_metric@10",
-        "L1_norm",
-        "L1_norm@3",
-        "L1_norm@10",
-    ]
-]
-evaluation_for_table = evaluation_for_table.rename(
-    {
-        "spearmans_footrule_metric": "order",
-        "spearmans_footrule_metric@3": "order@3",
-        "spearmans_footrule_metric@10": "order@10",
-        "L1_norm": "valdis",
-        "L1_norm@3": "valdis@3",
-        "L1_norm@10": "valdis@10",
-    },
-    axis=1,
-)
+# evaluation_for_table = mean_attribute_evaluation[
+#     [
+#         "spearmans_footrule_metric",
+#         "spearmans_footrule_metric@3",
+#         "spearmans_footrule_metric@10",
+#         "L1_norm",
+#         "L1_norm@3",
+#         "L1_norm@10",
+#     ]
+# ]
+# evaluation_for_table = evaluation_for_table.rename(
+#     {
+#         "spearmans_footrule_metric": "order",
+#         "spearmans_footrule_metric@3": "order@3",
+#         "spearmans_footrule_metric@10": "order@10",
+#         "L1_norm": "valdis",
+#         "L1_norm@3": "valdis@3",
+#         "L1_norm@10": "valdis@10",
+#     },
+#     axis=1,
+# )
 
-evaluation_for_table = evaluation_for_table.round(
-    {
-        "order": 1,
-        "order@3": 1,
-        "order@10": 1,
-        "valdis": 4,
-        "valdis@3": 4,
-        "valdis@10": 4,
-    }
-)
+# evaluation_for_table = evaluation_for_table.round(
+#     {
+#         "order": 1,
+#         "order@3": 1,
+#         "order@10": 1,
+#         "valdis": 4,
+#         "valdis@3": 4,
+#         "valdis@10": 4,
+#     }
+# )
 
-print(evaluation_for_table)
+print(mean_attribute_evaluation)

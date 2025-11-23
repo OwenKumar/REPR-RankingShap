@@ -88,7 +88,7 @@ def eval_feature_attribution(
     k_s = [1, 3, 5, 7, 10]
 
     # select all query document pairs for a certain query and calculate the validity and completeness
-    for query in queries[:3]:
+    for query in queries:
         query_len = qid_count_list[query]
         # Get the query to pass 
         current_query = EX[list_trckr : (list_trckr + query_len)]
@@ -121,4 +121,5 @@ def eval_feature_attribution(
     print(results)
     results = np.mean(np.asarray(results).transpose((0, 2, 1)), axis=2)
     print(results)
+    print(results.shape)
     return results
