@@ -100,6 +100,7 @@ def eval_feature_attribution(
             
             val_kendall, comp_kendall = calculate_validity_completeness(
                         current_query, 
+                        model,
                         top_k, 
                         background_data=background,
                         mixed_type_input=False, 
