@@ -96,8 +96,7 @@ def eval_feature_attribution(
         # top-k_metrics
         for i in range(len(k_s)):
             top_k = attribution_df[attribution_df.exp_ranked <= k_s[i]]['feature_number'].values # Take the top k explanation features
-            
-            print(top_k) #TODO testing
+
 
             val_kendall, comp_kendall = calculate_validity_completeness(
                         current_query, 
@@ -119,7 +118,6 @@ def eval_feature_attribution(
             results[i].append([val_kendall, comp_kendall])
 
         # Update list_tracker
-        break #TODO testing
         list_trckr += query_len
 
     

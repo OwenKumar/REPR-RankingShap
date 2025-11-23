@@ -76,12 +76,12 @@ path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_
 approaches = [
     "rankingshapK",
     "rankingshapW",
-    # "greedy_iter",
-    # "greedy_iter_full",
-    # "pointwise_lime",
-    # "pointwise_shap",
-    # "random",
-    # "rankinglime",
+    "greedy_iter",
+    "greedy_iter_full",
+    "pointwise_lime",
+    "pointwise_shap",
+    "random",
+    "rankinglime",
 ]
 if args.test:
     approaches = [a + "_test" for a in approaches]
