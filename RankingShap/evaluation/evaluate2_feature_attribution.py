@@ -87,7 +87,8 @@ def eval_feature_attribution(
     results = [[], [], [], [], []]
     k_s = [1, 3, 5, 7, 10]
 
-    exposure_diff = lambda x, y: np.sum(np.abs(1/(np.log2(x + np.finfo(float).eps)) - 1/(np.log2(y + np.finfo(float).eps))))
+    # Defining the metrics by which to evaluate
+    exposure_diff = lambda x, y: np.sum(np.abs(1/(np.log2(np.array(x) + 2)) - 1/(np.log2(np.array(y) + 2))))
     kendall_tau = lambda x, y: kendalltau(x, y)[0]
 
     # select all query document pairs for a certain query and calculate the validity and completeness
