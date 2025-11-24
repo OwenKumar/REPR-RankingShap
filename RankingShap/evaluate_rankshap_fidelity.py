@@ -192,12 +192,42 @@ if __name__ == "__main__":
 
     print(f"\n{'Method':<30} | {'Fidelity':<10} | {'wFidelity':<10}")
     print("-" * 56)
+    # Collect results to write to CSV
+    results_rows = []
 
     for csv_file in ATTRIBUTION_FILES:
-        if os.path.exists("results/results_MQ2008/feature_attributes/" + csv_file):
-            fid, w_fid = evaluator.evaluate(
-                "results/results_MQ2008/feature_attributes/" + csv_file
-            )
+        file_path = "results/results_MQ2008/feature_attributes/" + csv_file
+        if os.path.exists(file_path):
+            fid, w_fid = evaluator.evaluate(file_path)
             print(f"{csv_file:<30} | {fid:<10.4f} | {w_fid:<10.4f}")
+            results_rows.append(
+                {
+                    "method": csv_file,
+                    "fidelity": float(fid) if fid is not None else np.nan,
+                    "wFidelity": float(w_fid) if w_fid is not None else np.nan,
+                }
+            )
         else:
             print(f"{csv_file:<30} | File not found")
+            results_rows.append(
+                {
+                    "method": csv_file,
+                    "fidelity": np.nan,
+                    "wFidelity": np.nan,
+                }
+            )
+
+    # Ensure output directory exists
+    out_dir = "results/results_MQ2008_fidelity"
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: could not create output directory {out_dir}: {e}")
+
+    out_path = os.path.join(out_dir, "fidelity.csv")
+    try:
+        df_out = pd.DataFrame(results_rows)
+        df_out.to_csv(out_path, index=False)
+        print(f"\nSaved fidelity results to: {out_path}")
+    except Exception as e:
+        print(f"Error writing results CSV to {out_path}: {e}")
