@@ -6,6 +6,7 @@ from scipy.stats import kendalltau
 from utils.background_data import BackgroundData
 from approaches.ranking_shap import RankingShap
 from approaches.ranking_lime import RankingLIME
+from approaches.ranking_sharp import RankingSharp
 from approaches.greedy_listwise import GreedyListwise
 from approaches.pointwise_lime import AggregatedLime
 from approaches.pointwise_shap import AggregatedShap
@@ -151,6 +152,14 @@ ranking_lime_explainer = RankingLIME(
     individual_masking=True,
 )
 
+ranking_sharp_explainer = RankingSharp(
+    background_data=background_data.background_summary,
+    original_model=model.predict,
+    explanation_size=explanation_size,
+    name="rankingsharp",
+    rank_similarity_coefficient=rank_similarity_coefficient,
+)
+
 explainers = [
     random_explainer,
     aggregated_shap_explainer,
@@ -159,6 +168,7 @@ explainers = [
     ranking_shapW_explainer,
     greedy_explainer_0_iter,
     ranking_lime_explainer,
+    ranking_sharp_explainer,
 ]
 
 if dataset == "MQ2008":
