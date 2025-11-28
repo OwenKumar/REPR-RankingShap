@@ -95,7 +95,7 @@ def main():
         print(f"\n--- Step 2: Evaluating Fidelity (Top {k}) ---")
         eval_cmd = [
             sys.executable,
-            "evaluate_rankshap_text_fidelity.py",
+            "evaluate_rankingshap_text_fidelity.py",
             "--split",
             args.split,
             "--top_k",
