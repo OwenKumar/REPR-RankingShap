@@ -21,8 +21,13 @@ class AttributionExplanation(Explanation):
             self.explanation, columns=["feature_number", str(self.query)]
         )
         if os.path.isfile(filename):
+            existing_df = pd.read_csv(filename)
+            # If this query already exists in the file, drop it to avoid duplicates/suffixes
+            if str(self.query) in existing_df.columns:
+                existing_df = existing_df.drop(columns=[str(self.query)])
+
             attribute_dataframe = attribute_dataframe.merge(
-                pd.read_csv(filename), how="outer", on="feature_number"
+                existing_df, how="outer", on="feature_number"
             )
         attribute_dataframe.to_csv(filename, index=False)
 
