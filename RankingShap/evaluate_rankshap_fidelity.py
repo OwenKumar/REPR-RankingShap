@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
-from scipy.stats import kendalltau
+from scipy.stats import kendalltau, weightedtau
 from sklearn.datasets import load_svmlight_file
 import itertools
 import os
@@ -151,12 +151,19 @@ class RankSHAPEvaluator:
 
             # Standard Fidelity (Kendall's Tau)
             # We align the rankings based on the items (0, 1, 2...)
-            tau, _ = kendalltau(
-                [np.where(orig_ranking == i)[0][0] for i in local_indices],
-                [np.where(recon_ranking == i)[0][0] for i in local_indices],
-            )
+            # orig_ranking is [doc_id_at_rank_0, doc_id_at_rank_1, ...]
+            # We want [rank_of_doc_0, rank_of_doc_1, ...]
+            rank_vector_orig = [
+                np.where(orig_ranking == i)[0][0] for i in local_indices
+            ]
+            rank_vector_recon = [
+                np.where(recon_ranking == i)[0][0] for i in local_indices
+            ]
 
-            # Weighted Fidelity
+            tau, _ = kendalltau(rank_vector_orig, rank_vector_recon)
+
+            # Weighted Fidelity (Custom implementation matching paper)
+            # Note: calculate_w_kendall_tau expects the RANKINGS (lists of items), not rank vectors.
             w_tau = self.calculate_w_kendall_tau(orig_ranking, recon_ranking)
 
             if not np.isnan(tau):
