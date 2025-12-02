@@ -7,6 +7,16 @@ import itertools
 import os
 
 
+def kendalls_tau(a, b):
+    res = kendalltau(a, b)
+    return res.correlation
+
+
+def weighted_kendalls_tau(a, b):
+    res = weightedtau(a, b)
+    return res.correlation
+
+
 class RankingSHAPEvaluator:
     def __init__(self, model_path, dataset_path, n_features=46):
         """
@@ -74,34 +84,34 @@ class RankingSHAPEvaluator:
 
         return attributions
 
-    def calculate_w_kendall_tau(self, rank_a, rank_b):
-        """
-        Weighted Fidelity (wFidelity) as described in RankSHAP paper.
-        w_ij = |rank_a[i] - rank_a[j]|
-        """
-        # Map doc_index -> rank
-        r_a = {doc_idx: r for r, doc_idx in enumerate(rank_a)}
-        r_b = {doc_idx: r for r, doc_idx in enumerate(rank_b)}
+    # def calculate_w_kendall_tau(self, rank_a, rank_b):
+    #     """
+    #     Weighted Fidelity (wFidelity) as described in RankSHAP paper.
+    #     w_ij = |rank_a[i] - rank_a[j]|
+    #     """
+    #     # Map doc_index -> rank
+    #     r_a = {doc_idx: r for r, doc_idx in enumerate(rank_a)}
+    #     r_b = {doc_idx: r for r, doc_idx in enumerate(rank_b)}
 
-        items = list(r_a.keys())
-        if len(items) < 2:
-            return 0.0
+    #     items = list(r_a.keys())
+    #     if len(items) < 2:
+    #         return 0.0
 
-        numerator = 0.0
-        denominator = 0.0
+    #     numerator = 0.0
+    #     denominator = 0.0
 
-        for i, j in itertools.combinations(items, 2):
-            # Weight depends on the position difference in the ORIGINAL ranking (model output)
-            w_ij = abs(r_a[i] - r_a[j])
+    #     for i, j in itertools.combinations(items, 2):
+    #         # Weight depends on the position difference in the ORIGINAL ranking (model output)
+    #         w_ij = abs(r_a[i] - r_a[j])
 
-            # Concordance: 1 if same order, -1 if swapped
-            sgn_a = np.sign(r_a[i] - r_a[j])
-            sgn_b = np.sign(r_b[i] - r_b[j])
+    #         # Concordance: 1 if same order, -1 if swapped
+    #         sgn_a = np.sign(r_a[i] - r_a[j])
+    #         sgn_b = np.sign(r_b[i] - r_b[j])
 
-            numerator += w_ij * (sgn_a * sgn_b)
-            denominator += w_ij
+    #         numerator += w_ij * (sgn_a * sgn_b)
+    #         denominator += w_ij
 
-        return numerator / denominator if denominator != 0 else 0.0
+    #     return numerator / denominator if denominator != 0 else 0.0
 
     def evaluate(self, attribution_file):
         """
@@ -147,24 +157,19 @@ class RankingSHAPEvaluator:
 
             recon_ranking = local_indices[np.argsort(recon_scores)[::-1]]
 
-            # 4. Calculate Metrics
+            # Convert permutations to rank vectors for correct Kendall's Tau calculation
+            n_docs = len(docs_X)
+            ranks_orig = np.zeros(n_docs, dtype=int)
+            ranks_recon = np.zeros(n_docs, dtype=int)
 
-            # Standard Fidelity (Kendall's Tau)
-            # We align the rankings based on the items (0, 1, 2...)
-            # orig_ranking is [doc_id_at_rank_0, doc_id_at_rank_1, ...]
-            # We want [rank_of_doc_0, rank_of_doc_1, ...]
-            rank_vector_orig = [
-                np.where(orig_ranking == i)[0][0] for i in local_indices
-            ]
-            rank_vector_recon = [
-                np.where(recon_ranking == i)[0][0] for i in local_indices
-            ]
+            for r, doc_idx in enumerate(orig_ranking):
+                ranks_orig[doc_idx] = r
 
-            tau, _ = kendalltau(rank_vector_orig, rank_vector_recon)
+            for r, doc_idx in enumerate(recon_ranking):
+                ranks_recon[doc_idx] = r
 
-            # Weighted Fidelity (Custom implementation matching paper)
-            # Note: calculate_w_kendall_tau expects the RANKINGS (lists of items), not rank vectors.
-            w_tau = self.calculate_w_kendall_tau(orig_ranking, recon_ranking)
+            tau = kendalls_tau(ranks_orig, ranks_recon)
+            w_tau = weighted_kendalls_tau(ranks_orig, ranks_recon)
 
             if not np.isnan(tau):
                 fidelities.append(tau)

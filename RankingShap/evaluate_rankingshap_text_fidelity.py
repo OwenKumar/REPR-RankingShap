@@ -11,6 +11,16 @@ from utils.bm25_wrapper import BM25Wrapper, tokenize_and_stem
 # from utils.msmarco_loader import load_msmarco_query # No longer needed
 
 
+def kendalls_tau(a, b):
+    res = kendalltau(a, b)
+    return res.correlation
+
+
+def weighted_kendalls_tau(a, b):
+    res = weightedtau(a, b)
+    return res.correlation
+
+
 class TextRankingSHAPEvaluator:
     def __init__(self, query_data_path, split="validation", top_k=10):
         self.split = split
@@ -33,34 +43,34 @@ class TextRankingSHAPEvaluator:
                     continue
         return data
 
-    def calculate_w_kendall_tau(self, rank_a, rank_b):
-        """
-        Weighted Fidelity (wFidelity) as described in RankSHAP paper.
-        w_ij = |rank_a[i] - rank_a[j]|
-        """
-        # Map doc_index -> rank
-        r_a = {doc_idx: r for r, doc_idx in enumerate(rank_a)}
-        r_b = {doc_idx: r for r, doc_idx in enumerate(rank_b)}
+    # def calculate_w_kendall_tau(self, rank_a, rank_b):
+    #     """
+    #     Weighted Fidelity (wFidelity) as described in RankSHAP paper.
+    #     w_ij = |rank_a[i] - rank_a[j]|
+    #     """
+    #     # Map doc_index -> rank
+    #     r_a = {doc_idx: r for r, doc_idx in enumerate(rank_a)}
+    #     r_b = {doc_idx: r for r, doc_idx in enumerate(rank_b)}
 
-        items = list(r_a.keys())
-        if len(items) < 2:
-            return 0.0
+    #     items = list(r_a.keys())
+    #     if len(items) < 2:
+    #         return 0.0
 
-        numerator = 0.0
-        denominator = 0.0
+    #     numerator = 0.0
+    #     denominator = 0.0
 
-        for i, j in itertools.combinations(items, 2):
-            # Weight depends on the position difference in the ORIGINAL ranking (model output)
-            w_ij = abs(r_a[i] - r_a[j])
+    #     for i, j in itertools.combinations(items, 2):
+    #         # Weight depends on the position difference in the ORIGINAL ranking (model output)
+    #         w_ij = abs(r_a[i] - r_a[j])
 
-            # Concordance: 1 if same order, -1 if swapped
-            sgn_a = np.sign(r_a[i] - r_a[j])
-            sgn_b = np.sign(r_b[i] - r_b[j])
+    #         # Concordance: 1 if same order, -1 if swapped
+    #         sgn_a = np.sign(r_a[i] - r_a[j])
+    #         sgn_b = np.sign(r_b[i] - r_b[j])
 
-            numerator += w_ij * (sgn_a * sgn_b)
-            denominator += w_ij
+    #         numerator += w_ij * (sgn_a * sgn_b)
+    #         denominator += w_ij
 
-        return numerator / denominator if denominator != 0 else 0.0
+    #     return numerator / denominator if denominator != 0 else 0.0
 
     def evaluate(self, attribution_file):
         print(f"Evaluating {attribution_file}...")
@@ -142,17 +152,20 @@ class TextRankingSHAPEvaluator:
             # Convert rankings to rank vectors (rank of each item 0..N-1)
             # orig_ranking is [doc_id_at_rank_0, doc_id_at_rank_1, ...]
             # We want [rank_of_doc_0, rank_of_doc_1, ...]
-            rank_vector_orig = [
-                np.where(orig_ranking == i)[0][0] for i in local_indices
-            ]
-            rank_vector_recon = [
-                np.where(recon_ranking == i)[0][0] for i in local_indices
-            ]
+            n_docs = len(local_indices)
+            rank_vector_orig = np.zeros(n_docs, dtype=int)
+            rank_vector_recon = np.zeros(n_docs, dtype=int)
 
-            tau, _ = kendalltau(rank_vector_orig, rank_vector_recon)
+            for r, doc_idx in enumerate(orig_ranking):
+                rank_vector_orig[doc_idx] = r
+
+            for r, doc_idx in enumerate(recon_ranking):
+                rank_vector_recon[doc_idx] = r
+
+            tau = kendalls_tau(rank_vector_orig, rank_vector_recon)
 
             # Use custom weighted fidelity matching the paper
-            w_tau = self.calculate_w_kendall_tau(orig_ranking, recon_ranking)
+            w_tau = weighted_kendalls_tau(rank_vector_orig, rank_vector_recon)
 
             if not np.isnan(tau):
                 fidelities.append(tau)
