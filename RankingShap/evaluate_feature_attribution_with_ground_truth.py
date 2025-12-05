@@ -82,6 +82,7 @@ approaches = [
     "pointwise_shap",
     "random",
     "rankinglime",
+    "rankingsharp",
 ]
 if args.test:
     approaches = [a + "_test" for a in approaches]
