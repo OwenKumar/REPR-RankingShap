@@ -101,7 +101,8 @@ class RankingSharp:
                 attributions_list = []
                 for doc_features in query_features:
                     # individual() expects a single instance (1D array)
-                    doc_attributions = self.sharp.individual(doc_features, self.background_data)
+                    print(doc_features)
+                    doc_attributions = self.sharp.individual(doc_features)
                     attributions_list.append(doc_attributions)
                 
                 # Average attributions across all documents in the query
