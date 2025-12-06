@@ -1,5 +1,5 @@
 import pandas as pd
-from RankingShap.evaluation.evaluate_feature_attribution import eval_feature_attribution
+from evaluation.evaluate_feature_attribution import eval_feature_attribution
 from pathlib import Path
 
 import argparse
