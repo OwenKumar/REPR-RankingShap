@@ -43,9 +43,22 @@ class RankingSharp:
         
         # Initialize ShaRP explainer
         # ShaRP typically needs a ranking function and feature names
-        self.sharp_explainer = None
-        self.feature_attribution_explanation = None
-        self.feature_selection_explanation = None
+        # Initialize ShaRP
+        # ShaRP uses qoi="rank" to explain feature contributions to rankings
+        # target_function is the scoring function that determines rankings
+        self.sharp = ShaRP(
+                qoi="rank",
+                target_function=self._score_function,
+                measure="shapley",
+                sample_size=None,  # Use all samples
+                replace=False,
+                random_state=None,
+            )
+            
+            # Fit ShaRP on background data
+        self.sharp.fit(self.background_data)
+
+        
     
     def _score_function(self, X):
         """
@@ -70,21 +83,8 @@ class RankingSharp:
             tuple: (feature_selection, feature_attributes)
         """
         try:
-            # Initialize ShaRP
-            # ShaRP uses qoi="rank" to explain feature contributions to rankings
-            # target_function is the scoring function that determines rankings
-            sharp = ShaRP(
-                qoi="rank",
-                target_function=self._score_function,
-                measure="shapley",
-                sample_size=None,  # Use all samples
-                replace=False,
-                random_state=None,
-            )
             
-            # Fit ShaRP on background data
-            sharp.fit(self.background_data)
-            
+            print("Starting Sharp")
             # Get feature attributions for the query
             # ShaRP's individual() method returns attributions for a single instance
             # We'll aggregate attributions across all documents in the query
@@ -94,7 +94,7 @@ class RankingSharp:
                 attributions_list = []
                 for doc_features in query_features:
                     # individual() expects a single instance (1D array)
-                    doc_attributions = sharp.individual(doc_features, self.background_data)
+                    doc_attributions = self.sharp.individual(doc_features, self.background_data)
                     attributions_list.append(doc_attributions)
                 
                 # Average attributions across all documents in the query
@@ -102,6 +102,7 @@ class RankingSharp:
             else:
                 shapley_values = np.zeros(self.num_features)
             
+            print("Starting reformatting")
             # Convert ShaRP output to our format
             # ShaRP typically returns a dictionary or array of feature attributions
             if isinstance(shapley_values, dict):
@@ -116,9 +117,12 @@ class RankingSharp:
                     for i in range(min(len(values), self.num_features)):
                         exp_dict[i + 1] = float(values[i])
             
+
+            print("Starting sorting")
             # Sort by attribution value (descending)
             exp_dict = sorted(exp_dict.items(), key=lambda item: item[1], reverse=True)
             
+            print("Starting attribution")
             # Create AttributionExplanation
             feature_attributes = AttributionExplanation(
                 explanation=exp_dict,
@@ -126,12 +130,15 @@ class RankingSharp:
                 query_id=query_id
             )
             
-            # Create SelectionExplanation (top k features)
-            feature_selection = SelectionExplanation(
-                [exp_dict[i][0] for i in range(min(self.explanation_size, len(exp_dict)))],
-                num_features=self.num_features,
-                query_id=query_id
-            )
+            # # Create SelectionExplanation (top k features)
+            # feature_selection = SelectionExplanation(
+            #     [exp_dict[i][0] for i in range(min(self.explanation_size, len(exp_dict)))],
+            #     num_features=self.num_features,
+            #     query_id=query_id
+            # )
+            feature_selection = []
+            
+            print("Returning")
             
             return feature_selection, feature_attributes
             
