@@ -161,32 +161,32 @@ ranking_sharp_explainer = RankingSharp(
     rank_similarity_coefficient=rank_similarity_coefficient,
 )
 
-explainers = [
-    random_explainer,
-    aggregated_shap_explainer,
-    aggregated_lime_explainer,
-    ranking_shapK_explainer,
-    ranking_shapW_explainer,
-    greedy_explainer_0_iter,
-    ranking_lime_explainer,
-    ranking_sharp_explainer,
-]
+# explainers = [
+#     random_explainer,
+#     aggregated_shap_explainer,
+#     aggregated_lime_explainer,
+#     ranking_shapK_explainer,
+#     ranking_shapW_explainer,
+#     greedy_explainer_0_iter,
+#     ranking_lime_explainer,
+#     ranking_sharp_explainer,
+# ]
 
-if dataset == "MQ2008":
-    explainers.append(greedy_explainer_0_full)
-    # Add adaptive RankingSHAP for MQ2008 testing
-    # Uses sqrt-based sampling: samples = base * sqrt(n_docs)
-    ranking_shapK_adaptive_explainer = RankingShapAdaptive(
-        permutation_sampler="kernel",
-        background_data=background_data.background_summary,
-        original_model=model.predict,
-        explanation_size=explanation_size,
-        name="rankingshapK_adaptive",
-        rank_similarity_coefficient=rank_similarity_coefficient,
-        adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule
-        adaptive_max_samples=300,  # Hard upper cap on samples
-    )
-    explainers.append(ranking_shapK_adaptive_explainer)
+explainers = []
+
+# Add adaptive RankingSHAP for MQ2008 testing
+# Uses sqrt-based sampling: samples = base * sqrt(n_docs)
+ranking_shapK_adaptive_explainer = RankingShapAdaptive(
+    permutation_sampler="kernel",
+    background_data=background_data.background_summary,
+    original_model=model.predict,
+    explanation_size=explanation_size,
+    name="rankingshapK_adaptive",
+    rank_similarity_coefficient=rank_similarity_coefficient,
+    adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule
+    adaptive_max_samples=300,  # Hard upper cap on samples
+)
+explainers.append(ranking_shapK_adaptive_explainer)
 
 for exp in explainers:
     if test:
