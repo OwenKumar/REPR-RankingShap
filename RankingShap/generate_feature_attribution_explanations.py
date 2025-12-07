@@ -161,6 +161,7 @@ ranking_sharp_explainer = RankingSharp(
 )
 
 explainers = [
+    ranking_sharp_explainer,
     random_explainer,
     aggregated_shap_explainer,
     aggregated_lime_explainer,
@@ -168,7 +169,6 @@ explainers = [
     ranking_shapW_explainer,
     greedy_explainer_0_iter,
     ranking_lime_explainer,
-    ranking_sharp_explainer,
 ]
 
 if dataset == "MQ2008":
