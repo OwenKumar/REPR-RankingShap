@@ -57,7 +57,7 @@ class RankingSharp:
             
             print(f"[RankingSharp.__init__] Fitting ShaRP on background data (shape: {np.shape(background_data)})...", flush=True)
             # Fit ShaRP on background data
-            # self.sharp.fit(self.background_data)
+            self.sharp.fit(self.background_data)
             print(f"[RankingSharp.__init__] ShaRP initialization complete!", flush=True)
         except Exception as e:  
             print(f"[RankingSharp.__init__] ERROR during initialization: {e}", flush=True)
