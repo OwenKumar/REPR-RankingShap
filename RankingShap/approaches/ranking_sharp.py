@@ -42,10 +42,30 @@ class RankingSharp:
         self.num_features = len(background_data[0])
         
         # Initialize ShaRP explainer
-        # ShaRP typically needs a ranking function and feature names
-        self.sharp_explainer = None
-        self.feature_attribution_explanation = None
-        self.feature_selection_explanation = None
+        # ShaRP uses qoi="rank" to explain feature contributions to rankings
+        # target_function is the scoring function that determines rankings
+        try:
+            print(f"[RankingSharp.__init__] Initializing ShaRP explainer...", flush=True)
+            self.sharp = ShaRP(
+                qoi="rank",
+                target_function=self._score_function,
+                measure="shapley",
+                sample_size=10,  
+                replace=False,
+                random_state=None,
+            )
+            
+            print(f"[RankingSharp.__init__] Fitting ShaRP on background data (shape: {np.shape(background_data)})...", flush=True)
+            # Fit ShaRP on background data
+            self.sharp.fit(self.background_data)
+            print(f"[RankingSharp.__init__] ShaRP initialization complete!", flush=True)
+        except Exception as e:  
+            print(f"[RankingSharp.__init__] ERROR during initialization: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            raise
+
+        
     
     def _score_function(self, X):
         """
@@ -69,22 +89,9 @@ class RankingSharp:
         Returns:
             tuple: (feature_selection, feature_attributes)
         """
+        print(f"[RankingSharp.get_query_explanation] Called for query {query_id} with {len(query_features)} documents", flush=True)
         try:
-            # Initialize ShaRP
-            # ShaRP uses qoi="rank" to explain feature contributions to rankings
-            # target_function is the scoring function that determines rankings
-            sharp = ShaRP(
-                qoi="rank",
-                target_function=self._score_function,
-                measure="shapley",
-                sample_size=None,  # Use all samples
-                replace=False,
-                random_state=None,
-            )
-            
-            # Fit ShaRP on background data
-            sharp.fit(self.background_data)
-            
+            print(f"[RankingSharp.get_query_explanation] Starting Sharp for query {query_id}", flush=True)
             # Get feature attributions for the query
             # ShaRP's individual() method returns attributions for a single instance
             # We'll aggregate attributions across all documents in the query
@@ -94,7 +101,8 @@ class RankingSharp:
                 attributions_list = []
                 for doc_features in query_features:
                     # individual() expects a single instance (1D array)
-                    doc_attributions = sharp.individual(doc_features, self.background_data)
+                    print(doc_features)
+                    doc_attributions = self.sharp.individual(doc_features, self.background_data, sample_size = 10)
                     attributions_list.append(doc_attributions)
                 
                 # Average attributions across all documents in the query
@@ -102,6 +110,7 @@ class RankingSharp:
             else:
                 shapley_values = np.zeros(self.num_features)
             
+            print("Starting reformatting")
             # Convert ShaRP output to our format
             # ShaRP typically returns a dictionary or array of feature attributions
             if isinstance(shapley_values, dict):
@@ -116,9 +125,12 @@ class RankingSharp:
                     for i in range(min(len(values), self.num_features)):
                         exp_dict[i + 1] = float(values[i])
             
+
+            print("Starting sorting")
             # Sort by attribution value (descending)
             exp_dict = sorted(exp_dict.items(), key=lambda item: item[1], reverse=True)
             
+            print("Starting attribution")
             # Create AttributionExplanation
             feature_attributes = AttributionExplanation(
                 explanation=exp_dict,
@@ -133,11 +145,15 @@ class RankingSharp:
                 query_id=query_id
             )
             
+            print(f"[RankingSharp.get_query_explanation] Returning results for query {query_id}", flush=True)
+            
             return feature_selection, feature_attributes
             
         except Exception as e:
-            print(f"Error in ShaRP explanation: {e}")
-            print("Falling back to zero attributions. Please check ShaRP API documentation.")
+            print(f"[RankingSharp.get_query_explanation] ERROR for query {query_id}: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            print("[RankingSharp.get_query_explanation] Falling back to zero attributions.", flush=True)
             
             exp_dict = [(i + 1, 0.0) for i in range(self.num_features)]
             feature_attributes = AttributionExplanation(

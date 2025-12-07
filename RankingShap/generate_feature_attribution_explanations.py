@@ -152,15 +152,16 @@ ranking_lime_explainer = RankingLIME(
     individual_masking=True,
 )
 
-ranking_sharp_explainer = RankingSharp(
-    background_data=background_data.background_summary,
-    original_model=model.predict,
-    explanation_size=explanation_size,
-    name="rankingsharp",
-    rank_similarity_coefficient=rank_similarity_coefficient,
-)
+# ranking_sharp_explainer = RankingSharp(
+#     background_data=background_data.background_summary,
+#     original_model=model.predict,
+#     explanation_size=explanation_size,
+#     name="rankingsharp",
+#     rank_similarity_coefficient=rank_similarity_coefficient,
+# )
 
 explainers = [
+    # ranking_sharp_explainer,
     random_explainer,
     aggregated_shap_explainer,
     aggregated_lime_explainer,
@@ -168,7 +169,6 @@ explainers = [
     ranking_shapW_explainer,
     greedy_explainer_0_iter,
     ranking_lime_explainer,
-    ranking_sharp_explainer,
 ]
 
 if dataset == "MQ2008":
