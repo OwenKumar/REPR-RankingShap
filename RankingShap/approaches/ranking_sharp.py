@@ -57,7 +57,7 @@ class RankingSharp:
             
             print(f"[RankingSharp.__init__] Fitting ShaRP on background data (shape: {np.shape(background_data)})...", flush=True)
             # Fit ShaRP on background data
-            # self.sharp.fit(self.background_data)
+            self.sharp.fit(self.background_data)
             print(f"[RankingSharp.__init__] ShaRP initialization complete!", flush=True)
         except Exception as e:  
             print(f"[RankingSharp.__init__] ERROR during initialization: {e}", flush=True)
@@ -102,7 +102,7 @@ class RankingSharp:
                 for doc_features in query_features:
                     # individual() expects a single instance (1D array)
                     print(doc_features)
-                    doc_attributions = self.sharp.individual(doc_features, self.background_data)
+                    doc_attributions = self.sharp.individual(doc_features, self.background_data, sample_size = 10)
                     attributions_list.append(doc_attributions)
                 
                 # Average attributions across all documents in the query
