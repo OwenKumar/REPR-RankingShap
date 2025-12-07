@@ -191,6 +191,7 @@ if __name__ == "__main__":
     # List of attribution files you uploaded
     ATTRIBUTION_FILES = [
         "rankingshap_eval.csv",
+        "rankingshapK_adaptive_eval.csv",
         "rankinglime_eval.csv",
         "pointwise_lime_eval.csv",
         "pointwise_shap_eval.csv",

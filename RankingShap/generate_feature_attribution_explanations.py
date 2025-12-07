@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import kendalltau
 from utils.background_data import BackgroundData
 from approaches.ranking_shap import RankingShap
+from approaches.ranking_shap_adaptive import RankingShapAdaptive
 from approaches.ranking_lime import RankingLIME
 from approaches.ranking_sharp import RankingSharp
 from approaches.greedy_listwise import GreedyListwise
@@ -188,7 +189,20 @@ explainers = [
     ]
 
 if dataset == "MQ2008":
-        explainers.append(greedy_explainer_0_full)
+    explainers.append(greedy_explainer_0_full)
+    # Add adaptive RankingSHAP for MQ2008 testing
+    # Uses sqrt-based sampling: samples = base * sqrt(n_docs)
+    ranking_shapK_adaptive_explainer = RankingShapAdaptive(
+        permutation_sampler="kernel",
+        background_data=background_data.background_summary,
+        original_model=model.predict,
+        explanation_size=explanation_size,
+        name="rankingshapK_adaptive",
+        rank_similarity_coefficient=rank_similarity_coefficient,
+        adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule
+        adaptive_max_samples=300,  # Hard upper cap on samples
+    )
+    explainers.append(ranking_shapK_adaptive_explainer)
 
 names = {explainer.name: explainer for explainer in explainers}
 if args.approach in names:
