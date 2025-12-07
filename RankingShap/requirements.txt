@@ -31,3 +31,6 @@ threadpoolctl==3.4.0
 tifffile==2024.2.12
 tqdm==4.66.2
 tzdata==2024.1
+rank-bm25==0.2.2
+datasets==4.4.1
+nltk==3.9.2
