@@ -152,13 +152,13 @@ ranking_lime_explainer = RankingLIME(
     individual_masking=True,
 )
 
-ranking_sharp_explainer = RankingSharp(
-    background_data=background_data.background_summary,
-    original_model=model.predict,
-    explanation_size=explanation_size,
-    name="rankingsharp",
-    rank_similarity_coefficient=rank_similarity_coefficient,
-)
+# ranking_sharp_explainer = RankingSharp(
+#     background_data=background_data.background_summary,
+#     original_model=model.predict,
+#     explanation_size=explanation_size,
+#     name="rankingsharp",
+#     rank_similarity_coefficient=rank_similarity_coefficient,
+# )
 
 explainers = [
     # ranking_sharp_explainer,
