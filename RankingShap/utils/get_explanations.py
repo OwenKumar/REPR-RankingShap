@@ -58,10 +58,10 @@ def calculate_all_query_explanations(
                 query_end_time = time.time()
                 query_end_cpu = time.process_time()
                 per_query_timing.append({
-                    "query_id": query,
-                    "num_documents": query_len,
-                    "wall_clock_time_seconds": query_end_time - query_start_time,
-                    "cpu_time_seconds": query_end_cpu - query_start_cpu,
+                    "query_id": int(query),  # Convert to native Python int
+                    "num_documents": int(query_len),  # Convert to native Python int
+                    "wall_clock_time_seconds": float(query_end_time - query_start_time),  # Ensure float
+                    "cpu_time_seconds": float(query_end_cpu - query_start_cpu),  # Ensure float
                 })
 
             feature_attribution.safe_to_file(safe_attributions_to)

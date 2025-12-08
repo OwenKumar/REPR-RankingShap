@@ -289,24 +289,24 @@ for exp in explainers:
     
     # Calculate number of queries processed
     if num_queries_eval is not None:
-        num_queries_processed = num_queries_eval
+        num_queries_processed = int(num_queries_eval)  # Convert to native Python int
     else:
         # Get all unique query IDs from test_data
         _, _, Eqids = test_data
-        num_queries_processed = len(get_queryids_as_list(Eqids))
+        num_queries_processed = int(len(get_queryids_as_list(Eqids)))  # Convert to native Python int
     
-    # Store timing results
+    # Store timing results (ensure all values are native Python types for JSON serialization)
     timing_result = {
         "explainer": exp.name,
-        "wall_clock_time_seconds": wall_clock_time,
-        "cpu_time_seconds": cpu_time,
+        "wall_clock_time_seconds": float(wall_clock_time),  # Ensure float
+        "cpu_time_seconds": float(cpu_time),  # Ensure float
         "num_queries": num_queries_processed,
         "dataset": dataset,
-        "experiment_iteration": experiment_iteration,
+        "experiment_iteration": int(experiment_iteration),  # Ensure int
     }
     
     if gpu_time is not None:
-        timing_result["gpu_time_seconds"] = gpu_time
+        timing_result["gpu_time_seconds"] = float(gpu_time)  # Ensure float
     
     # Store per-query timing data
     if per_query_timing:
