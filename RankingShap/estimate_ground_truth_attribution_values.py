@@ -44,6 +44,13 @@ parser.add_argument(
     type=int,
     help="Run the experiment several times to determine stability of the results",
 )
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Which fold of the data to use.",
+)
 parser.add_argument("--test", action="store_true", help="If true runs only one query")
 
 
@@ -51,6 +58,7 @@ args = parser.parse_args()
 print(args, flush=True)
 
 dataset = args.dataset
+fold = args.fold
 experiment_iterations = args.experiment_iterations
 n_samples = 2**args.nsamples
 background_samples = args.background_samples
@@ -65,7 +73,7 @@ else:
 progress = False
 
 # Get train, test_data
-data_directory = Path("data/" + dataset + "/Fold1/")
+data_directory = Path("data/" + dataset + f"/Fold{fold}/")
 train_data = get_data(data_file=data_directory / "train.txt")
 test_data = get_data(data_file=data_directory / "test.txt")
 
