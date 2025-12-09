@@ -38,6 +38,13 @@ parser.add_argument(
 )
 parser.add_argument("--test", action="store_true", help="If true runs only one query")
 
+parser.add_argument(
+    "--approach",
+    type=str,
+    default="all",
+    help="Choose to run a specific approach.",
+)
+
 
 args = parser.parse_args()
 print(args, flush=True)
@@ -160,22 +167,25 @@ ranking_lime_explainer = RankingLIME(
 #     rank_similarity_coefficient=rank_similarity_coefficient,
 # )
 
-# explainers = [
-#     # ranking_sharp_explainer,
-#     random_explainer,
-#     aggregated_shap_explainer,
-#     aggregated_lime_explainer,
-#     ranking_shapK_explainer,
-#     ranking_shapW_explainer,
-#     greedy_explainer_0_iter,
-#     ranking_lime_explainer,
-# ]
+explainers = [
+        # ranking_sharp_explainer,
+        random_explainer,
+        aggregated_shap_explainer,
+        aggregated_lime_explainer,
+        ranking_shapK_explainer,
+        ranking_shapW_explainer,
+        greedy_explainer_0_iter,
+        ranking_lime_explainer,
+    ]
 
-# if dataset == "MQ2008":
-#     explainers.append(greedy_explainer_0_full)
+if dataset == "MQ2008":
+        explainers.append(greedy_explainer_0_full)
 
-explainers = [random_explainer]
+names = {explainer.name: explainer for explainer in explainers}
+if args.approach in names:
+    explainers = [names[args.approach]]
 
+print(explainers)
 
 for exp in explainers:
     if test:

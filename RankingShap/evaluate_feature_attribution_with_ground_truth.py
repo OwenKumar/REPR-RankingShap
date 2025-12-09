@@ -34,6 +34,13 @@ parser.add_argument(
     help="Path to the model file of the model that we want to approximate the feature importance for",
 )
 
+parser.add_argument(
+    "--approach",
+    type=str,
+    default="all",
+    help="Choose to run a specific approach.",
+)
+
 
 args = parser.parse_args()
 print(args, flush=True)
@@ -74,16 +81,20 @@ path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_
 
 
 approaches = [
-    # "rankingshapK",
-    # "rankingshapW",
-    # "greedy_iter",
-    # "greedy_iter_full",
-    # "pointwise_lime",
-    # "pointwise_shap",
+    "rankingshapK",
+    "rankingshapW",
+    "greedy_iter",
+    "greedy_iter_full",
+    "pointwise_lime",
+    "pointwise_shap",
     "random",
-    # "rankinglime",
+    "rankinglime",
     #"rankingsharp",
 ]
+
+if args.approach in approaches:
+    approaches = [args.approach]
+
 if args.test:
     approaches = [a + "_test" for a in approaches]
 
