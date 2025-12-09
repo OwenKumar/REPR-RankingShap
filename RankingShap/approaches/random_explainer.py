@@ -10,7 +10,7 @@ class RandomExplainer:
         self.num_features = num_features
 
     def get_query_explanation(self, query_features, query_id=""):
-        np.random.set_state(int(datetime.now().timestamp()))
+        np.random.seed(int(datetime.now().timestamp()))
         explanation = np.random.random(self.num_features)
         explanation = list(explanation / sum(explanation))
         explanation = [(i + 1, explanation[i]) for i in range(self.num_features)]
