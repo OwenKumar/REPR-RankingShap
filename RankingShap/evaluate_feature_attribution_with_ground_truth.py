@@ -34,6 +34,13 @@ parser.add_argument(
     help="Path to the model file of the model that we want to approximate the feature importance for",
 )
 
+parser.add_argument(
+    "--approach",
+    type=str,
+    default="all",
+    help="Choose to run a specific approach.",
+)
+
 
 args = parser.parse_args()
 print(args, flush=True)
@@ -84,6 +91,10 @@ approaches = [
     "rankinglime",
     #"rankingsharp",
 ]
+
+if args.approach in approaches:
+    approaches = [args.approach]
+
 if args.test:
     approaches = [a + "_test" for a in approaches]
 
