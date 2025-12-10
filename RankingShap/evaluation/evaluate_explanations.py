@@ -74,4 +74,5 @@ def calculate_validity_completeness(
         -rank_similarity_coefficient(rank_list(comp_pred), rank_list(pred))
         for comp_pred in comp_preds
     ]
+    
     return np.mean(val_scores), np.mean(comp_scores)

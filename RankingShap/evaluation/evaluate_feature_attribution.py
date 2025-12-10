@@ -110,6 +110,7 @@ def eval_feature_attribution(
                         mixed_type_input=False, 
                         rank_similarity_coefficient=kendall_tau,
                         )
+            
             val_expo, comp_expo = calculate_validity_completeness(
                         current_query, 
                         model, 
@@ -125,5 +126,5 @@ def eval_feature_attribution(
         list_trckr += query_len
 
     
-    results = np.mean(np.asarray(results).transpose((0, 2, 1)), axis=2)
+    results = np.nanmean(np.asarray(results).transpose((0, 2, 1)), axis=2)
     return results
