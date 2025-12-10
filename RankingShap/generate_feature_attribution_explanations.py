@@ -194,8 +194,6 @@ names = {explainer.name: explainer for explainer in explainers}
 if args.approach in names:
     explainers = [names[args.approach]]
 
-print(explainers)
-
 for exp in explainers:
     if test:
         path_to_attribute_values = path_to_attribution_folder / (exp.name + "_test.csv")
