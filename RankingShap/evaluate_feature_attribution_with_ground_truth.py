@@ -41,12 +41,20 @@ parser.add_argument(
     help="Choose to run a specific approach.",
 )
 
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Which fold of the data to use.",
+)
+
 
 args = parser.parse_args()
 print(args, flush=True)
 
 dataset = args.dataset
-
+fold = args.fold
 # ---- arguments for metrics
 
 # We assume that the model has been trained and saved in a model file
@@ -64,7 +72,7 @@ background_data = BackgroundData(
 )
 
 # Get train, eval_data
-data_directory = Path("data/" + dataset + "/Fold1/")
+data_directory = Path("data/" + dataset + f"/Fold{fold}/")
 # train_data = get_data(data_file=data_directory / "train.txt")
 test_data = get_data(data_file=data_directory / "test.txt")
 # eval_data = get_data(data_file=data_directory / "vali.txt")

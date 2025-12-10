@@ -37,10 +37,19 @@ parser.add_argument(
     help="Number of background samples to be used for explanations",
 )
 
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Which fold of the data to use.",
+)
+
 args = parser.parse_args()
 print(args, flush=True)
 
 dataset = args.dataset
+fold = args.fold
 file_name = args.file_name
 model_type = args.model_type
 background_samples = args.background_samples
@@ -113,7 +122,7 @@ def train_model(
 
 
 # Get train, eval_data
-data_directory = Path("data/" + dataset + "/Fold1/")
+data_directory = Path("data/" + dataset + f"/Fold{fold}/")
 train_data = get_data(data_file=data_directory / "train.txt")
 eval_data = get_data(data_file=data_directory / "vali.txt")
 
