@@ -36,6 +36,13 @@ parser.add_argument(
     default=100,
     help="Number of background samples to be used for explanations",
 )
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Fold number to use (default: 1)",
+)
 
 args = parser.parse_args()
 print(args, flush=True)
@@ -44,6 +51,7 @@ dataset = args.dataset
 file_name = args.file_name
 model_type = args.model_type
 background_samples = args.background_samples
+fold = args.fold
 
 
 def train_model(
@@ -113,22 +121,25 @@ def train_model(
 
 
 # Get train, eval_data
-data_directory = Path("data/" + dataset + "/Fold1/")
+data_directory = Path(f"data/{dataset}/Fold{fold}/")
 train_data = get_data(data_file=data_directory / "train.txt")
 eval_data = get_data(data_file=data_directory / "vali.txt")
 
+# Include fold in model file name
+model_file_path = Path(f"results/model_files/{file_name}_fold{fold}")
 model = train_model(
     train_data=train_data,
     eval_data=eval_data,
     ranking_model_type=model_type,
-    save_to_file=Path("results/model_files/" + file_name),
+    save_to_file=model_file_path,
 )
 
 # Prepare background data training:
 background_data = BackgroundData(
     train_data[0], summarization_type="random_sample", summary_length=background_samples
 )
+# Include fold in background data file name
 np.save(
-    Path("results/background_data_files/train_background_data_" + dataset + ".npy"),
+    Path(f"results/background_data_files/train_background_data_{dataset}_fold{fold}.npy"),
     background_data.background_summary,
 )

@@ -41,6 +41,13 @@ parser.add_argument(
     help="Enables us to run the same experiment several times",
 )
 parser.add_argument("--test", action="store_true", help="If true runs only one query")
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Fold number to use (default: 1)",
+)
 
 
 args = parser.parse_args()
@@ -49,12 +56,18 @@ print(args, flush=True)
 dataset = args.dataset
 experiment_iteration = args.experiment_iteration
 test = args.test
+fold = args.fold
 
 # We assume that the model has been trained and saved in a model file
 model_file = args.model_file
+# Include fold in model file name if not already present
+if f"_fold{fold}" not in model_file:
+    model_file_with_fold = f"{model_file}_fold{fold}"
+else:
+    model_file_with_fold = model_file
 
 model = lightgbm.Booster(
-    model_file=(str((Path("results/model_files/") / model_file).absolute()))
+    model_file=(str((Path("results/model_files/") / model_file_with_fold).absolute()))
 )
 
 
@@ -68,18 +81,21 @@ else:
     num_queries_eval = None
 
 # Get train, eval_data
-data_directory = Path("data/" + dataset + "/Fold1/")
+data_directory = Path(f"data/{dataset}/Fold{fold}/")
 train_data = get_data(data_file=data_directory / "train.txt")
 test_data = get_data(data_file=data_directory / "test.txt")
 eval_data = get_data(data_file=data_directory / "vali.txt")
 
-path_to_attribution_folder = Path("results/results_" + dataset + "/feature_attributes/")
+# Include fold in output folder path
+path_to_attribution_folder = Path(f"results/results_{dataset}_fold{fold}/feature_attributes/")
+path_to_attribution_folder.mkdir(parents=True, exist_ok=True)
 
 num_features = len(test_data[0][0])
 
+# Load fold-specific background data
 background_data = BackgroundData(
     np.load(
-        Path("results/background_data_files/train_background_data_" + dataset + ".npy")
+        Path(f"results/background_data_files/train_background_data_{dataset}_fold{fold}.npy")
     ),
     summarization_type=None,
 )
@@ -349,8 +365,8 @@ for exp in explainers:
     
     print("="*80 + "\n", flush=True)
 
-# Save timing results to JSON file
-timing_output_file = path_to_attribution_folder / f"timing_results_iter{experiment_iteration}.json"
+# Save timing results to JSON file (include fold in filename)
+timing_output_file = path_to_attribution_folder / f"timing_results_fold{fold}_iter{experiment_iteration}.json"
 with open(timing_output_file, 'w') as f:
     json.dump(timing_results, f, indent=2)
 
