@@ -1,0 +1,54 @@
+#!/bin/bash
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=RShapFolds1-2
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=48:00:00
+#SBATCH --output=/home/scur1739/logs/out-%x.%A.out
+
+module purge
+module load 2024
+module load Miniconda3/24.7.1-0
+module load jax/0.3.14-foss-2022a-CUDA-11.7.0
+module load CUDA/12.6.0
+
+source activate Rshap
+
+cd $HOME/git/REPR-RankingShap/RankingShap
+
+# Create directories
+mkdir -p results
+mkdir -p results/background_data_files
+mkdir -p results/model_files
+mkdir -p results/results_MQ2008_fold1
+mkdir -p results/results_MQ2008_fold1/feature_attributes
+mkdir -p results/results_MQ2008_fold2
+mkdir -p results/results_MQ2008_fold2/feature_attributes
+mkdir -p results/results_MSLR-WEB10K
+mkdir -p results/results_MSLR-WEB10K/feature_attributes
+
+# Loop over folds 1 and 2
+for fold in 1 2; do
+    echo "=========================================="
+    echo "Processing Fold $fold"
+    echo "=========================================="
+    
+    # Train model for this fold
+    srun python train_model.py --file_name model_MQ2008 --dataset MQ2008 --model_type listwise --fold $fold
+    
+    # Generate feature attributions for this fold
+    srun python generate_feature_attribution_explanations.py --model_file model_MQ2008 --dataset MQ2008 --experiment_iteration 1 --fold $fold
+    
+    # Estimate ground truth for this fold
+    srun python estimate_ground_truth_attribution_values.py --model_file model_MQ2008 --dataset MQ2008 --background_samples 100 --nsamples 16 --experiment_iterations 3 --fold $fold
+    
+    # Evaluate feature attributions for this fold
+    srun python evaluate_feature_attribution_with_ground_truth.py --model_file model_MQ2008 --dataset MQ2008 --file_name_ground_truth feature_importance_approxiation__backgroundcount_100_nsamples_65536_means.csv --fold $fold
+    
+    echo "Completed Fold $fold"
+    echo "=========================================="
+done
+
+echo "All folds (1-2) completed!"
+
