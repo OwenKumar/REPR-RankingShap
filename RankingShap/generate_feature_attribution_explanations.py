@@ -6,6 +6,7 @@ from scipy.stats import kendalltau
 from utils.background_data import BackgroundData
 from approaches.ranking_shap import RankingShap
 from approaches.ranking_shap_adaptive import RankingShapAdaptive
+from approaches.ranking_shap_adaptive_refined import RankingShapAdaptiveRefined
 from approaches.ranking_lime import RankingLIME
 from approaches.ranking_sharp import RankingSharp
 from approaches.greedy_listwise import GreedyListwise
@@ -206,6 +207,40 @@ ranking_shapK_adaptive_explainer = RankingShapAdaptive(
     adaptive_max_samples=300,  # Hard upper cap on samples
 )
 explainers.append(ranking_shapK_adaptive_explainer)
+
+# Add two-stage adaptive refined RankingSHAP
+# Stage 1: Adaptive sampling to identify top features
+# Stage 2: Refine top-k features with high-quality sampling
+ranking_shapK_adaptive_refined_explainer = RankingShapAdaptiveRefined(
+    permutation_sampler="kernel",
+    background_data=background_data.background_summary,
+    original_model=model.predict,
+    explanation_size=explanation_size,
+    name="rankingshapK_adaptive_refined",
+    rank_similarity_coefficient=rank_similarity_coefficient,
+    adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule (Stage 1 - like adaptive)
+    adaptive_max_samples=300,  # Hard upper cap on samples (Stage 1 - like adaptive)
+    top_k_to_refine=10,  # Number of top features to refine
+    refinement_samples="auto",  # Stage 2: High-quality sampling like baseline RankingSHAP
+)
+explainers.append(ranking_shapK_adaptive_refined_explainer)
+
+# Add two-stage adaptive refined RankingSHAP
+# Stage 1: Adaptive sampling to identify top features
+# Stage 2: Refine top-k features with high-quality sampling
+ranking_shapK_adaptive_refined_explainer = RankingShapAdaptiveRefined(
+    permutation_sampler="kernel",
+    background_data=background_data.background_summary,
+    original_model=model.predict,
+    explanation_size=explanation_size,
+    name="rankingshapK_adaptive_refined",
+    rank_similarity_coefficient=rank_similarity_coefficient,
+    adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule (Stage 1 - like adaptive)
+    adaptive_max_samples=300,  # Hard upper cap on samples (Stage 1 - like adaptive)
+    top_k_to_refine=10,  # Number of top features to refine
+    refinement_samples="auto",  # Stage 2: High-quality sampling like baseline RankingSHAP
+)
+explainers.append(ranking_shapK_adaptive_refined_explainer)
 
 names = {explainer.name: explainer for explainer in explainers}
 if args.approach in names:

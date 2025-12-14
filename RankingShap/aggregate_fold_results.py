@@ -168,29 +168,178 @@ def aggregate_evaluation_results(dataset, num_folds=5):
     print("AGGREGATING EVALUATION RESULTS ACROSS FOLDS")
     print("="*80)
     
-    all_eval_results = {}
+    all_fold_results = []
     
     # Load evaluation results from each fold
     for fold in range(1, num_folds + 1):
-        eval_folder = Path(f"results/results_{dataset}_fold{fold}/feature_attributes/")
+        eval_file = Path(f"results/results_{dataset}_fold{fold}/feature_attributes/evaluation_results.csv")
         
-        if not eval_folder.exists():
-            print(f"Warning: Evaluation folder not found for fold {fold}: {eval_folder}")
+        if not eval_file.exists():
+            print(f"Warning: Evaluation file not found for fold {fold}: {eval_file}")
             continue
         
-        # The evaluation script prints results but doesn't save them to a standard file
-        # We need to check if there's a saved evaluation file or parse the output
-        # For now, we'll look for any CSV files that might contain evaluation results
-        print(f"Checking fold {fold} evaluation results...")
+        print(f"Loading evaluation results from fold {fold}...")
+        try:
+            fold_df = pd.read_csv(eval_file, index_col=0)
+            fold_df['fold'] = fold
+            all_fold_results.append(fold_df)
+        except Exception as e:
+            print(f"Error loading evaluation file for fold {fold}: {e}")
+            continue
+    
+    if not all_fold_results:
+        print("ERROR: No evaluation results found across any folds!")
+        return None
+    
+    # Combine all folds
+    combined_df = pd.concat(all_fold_results)
+    
+    # Aggregate statistics per approach
+    aggregated = {}
+    
+    # Get unique approaches (remove @k suffix for grouping)
+    approaches = combined_df.index.unique()
+    base_approaches = set()
+    for approach in approaches:
+        # Extract base approach name (e.g., "rankingshapK@5" -> "rankingshapK")
+        base_name = approach.split('@')[0]
+        base_approaches.add(base_name)
+    
+    for base_approach in base_approaches:
+        # Get all rows for this approach (across all k values and folds)
+        approach_rows = combined_df[combined_df.index.str.startswith(base_approach)]
         
-        # Note: The evaluation script currently just prints results
-        # We would need to modify it to save results, or parse from stdout
-        # For now, we'll create a placeholder structure
+        aggregated[base_approach] = {}
+        
+        # Aggregate each metric
+        for metric in ['Pre_ken', 'Del_ken', 'Pre_exp', 'Del_exp']:
+            if metric in approach_rows.columns:
+                values = approach_rows[metric].dropna()
+                if len(values) > 0:
+                    aggregated[base_approach][metric] = {
+                        'mean': float(np.mean(values)),
+                        'std': float(np.std(values)),
+                        'min': float(np.min(values)),
+                        'max': float(np.max(values)),
+                        'values': values.tolist(),
+                    }
+        
+        # Also aggregate by k value
+        aggregated[base_approach]['by_k'] = {}
+        for k in [1, 3, 5, 7, 10]:
+            k_rows = approach_rows[approach_rows.index.str.contains(f'@{k}')]
+            if len(k_rows) > 0:
+                aggregated[base_approach]['by_k'][k] = {}
+                for metric in ['Pre_ken', 'Del_ken', 'Pre_exp', 'Del_exp']:
+                    if metric in k_rows.columns:
+                        values = k_rows[metric].dropna()
+                        if len(values) > 0:
+                            aggregated[base_approach]['by_k'][k][metric] = {
+                                'mean': float(np.mean(values)),
+                                'std': float(np.std(values)),
+                            }
     
-    # TODO: This requires modifying evaluate_feature_attribution_with_ground_truth.py
-    # to save results to a file that we can aggregate here
+    return aggregated
+
+
+def print_evaluation_summary(aggregated_eval):
+    """Print a formatted summary of aggregated evaluation results."""
+    print("\n" + "="*80)
+    print("AGGREGATED EVALUATION SUMMARY (Across All Folds)")
+    print("="*80)
     
-    return all_eval_results
+    for approach, stats in aggregated_eval.items():
+        print(f"\n{approach.upper()}:")
+        if 'by_k' in stats:
+            print("  Metrics by k value:")
+            for k in [1, 3, 5, 7, 10]:
+                if k in stats['by_k']:
+                    k_stats = stats['by_k'][k]
+                    print(f"    k={k}:")
+                    for metric in ['Pre_ken', 'Del_ken', 'Pre_exp', 'Del_exp']:
+                        if metric in k_stats:
+                            mean = k_stats[metric]['mean']
+                            std = k_stats[metric]['std']
+                            print(f"      {metric}: {mean:.4f} ± {std:.4f}")
+
+
+def print_combined_report(aggregated_timing, aggregated_eval):
+    """Print a combined report comparing baseline vs adaptive."""
+    print("\n" + "="*80)
+    print("COMBINED REPORT: Baseline vs Adaptive")
+    print("="*80)
+    
+    if 'speedup' in aggregated_timing:
+        speedup = aggregated_timing['speedup']
+        print(f"\n⚡ SPEED:")
+        print(f"  Wall-clock speedup: {speedup['wall_clock']['mean']:.2f}x ± {speedup['wall_clock']['std']:.2f}x")
+        print(f"  CPU speedup: {speedup['cpu']['mean']:.2f}x ± {speedup['cpu']['std']:.2f}x")
+    
+    if 'rankingshapK' in aggregated_eval and 'rankingshapK_adaptive' in aggregated_eval:
+        baseline = aggregated_eval['rankingshapK']
+        adaptive = aggregated_eval['rankingshapK_adaptive']
+        
+        print(f"\n📊 QUALITY (Evaluation Metrics):")
+        print(f"  Comparison at k=5 (most important):")
+        
+        if 'by_k' in baseline and 5 in baseline['by_k'] and 'by_k' in adaptive and 5 in adaptive['by_k']:
+            baseline_k5 = baseline['by_k'][5]
+            adaptive_k5 = adaptive['by_k'][5]
+            
+            for metric in ['Pre_ken', 'Del_ken', 'Pre_exp', 'Del_exp']:
+                if metric in baseline_k5 and metric in adaptive_k5:
+                    baseline_val = baseline_k5[metric]['mean']
+                    adaptive_val = adaptive_k5[metric]['mean']
+                    baseline_std = baseline_k5[metric]['std']
+                    adaptive_std = adaptive_k5[metric]['std']
+                    
+                    diff = adaptive_val - baseline_val
+                    diff_pct = (diff / baseline_val * 100) if baseline_val != 0 else 0
+                    
+                    status = "✅ BETTER" if diff > 0 else "⚠️  WORSE" if diff < 0 else "➡️  SAME"
+                    if metric.startswith('Del'):  # For deletion metrics, lower might be better
+                        status = "✅ BETTER" if diff < 0 else "⚠️  WORSE" if diff > 0 else "➡️  SAME"
+                    
+                    print(f"    {metric}:")
+                    print(f"      Baseline: {baseline_val:.4f} ± {baseline_std:.4f}")
+                    print(f"      Adaptive:  {adaptive_val:.4f} ± {adaptive_std:.4f}")
+                    print(f"      Difference: {diff:+.4f} ({diff_pct:+.2f}%) {status}")
+        
+        print(f"\n📈 CONCLUSION:")
+        speedup_mean = speedup['wall_clock']['mean'] if 'speedup' in aggregated_timing else 1.0
+        
+        # Check if adaptive is better at k=5
+        if 'by_k' in baseline and 5 in baseline['by_k'] and 'by_k' in adaptive and 5 in adaptive['by_k']:
+            baseline_k5 = baseline['by_k'][5]
+            adaptive_k5 = adaptive['by_k'][5]
+            
+            better_count = 0
+            worse_count = 0
+            for metric in ['Pre_ken', 'Pre_exp']:  # Higher is better
+                if metric in baseline_k5 and metric in adaptive_k5:
+                    if adaptive_k5[metric]['mean'] > baseline_k5[metric]['mean']:
+                        better_count += 1
+                    elif adaptive_k5[metric]['mean'] < baseline_k5[metric]['mean']:
+                        worse_count += 1
+            
+            for metric in ['Del_ken', 'Del_exp']:  # Lower might be better (check sign)
+                if metric in baseline_k5 and metric in adaptive_k5:
+                    # Assuming lower is better for deletion metrics
+                    if adaptive_k5[metric]['mean'] < baseline_k5[metric]['mean']:
+                        better_count += 1
+                    elif adaptive_k5[metric]['mean'] > baseline_k5[metric]['mean']:
+                        worse_count += 1
+            
+            if speedup_mean > 1.0 and better_count >= worse_count:
+                print(f"  ✅ Adaptive is {speedup_mean:.1f}x FASTER and has BETTER or EQUAL quality!")
+            elif speedup_mean > 1.0 and worse_count > better_count:
+                print(f"  ⚠️  Adaptive is {speedup_mean:.1f}x FASTER but has WORSE quality")
+            elif speedup_mean > 1.0:
+                print(f"  ✅ Adaptive is {speedup_mean:.1f}x FASTER with SIMILAR quality")
+            else:
+                print(f"  ❌ Adaptive is SLOWER")
+    
+    print("="*80)
 
 
 def print_timing_summary(aggregated_timing):
@@ -312,8 +461,43 @@ def main():
         return 1
     
     # Aggregate evaluation results (if available)
-    # Note: This requires evaluation script to save results to files
     aggregated_eval = aggregate_evaluation_results(dataset, num_folds)
+    
+    if aggregated_eval:
+        # Print evaluation summary
+        print_evaluation_summary(aggregated_eval)
+        
+        # Save aggregated evaluation results
+        eval_output_file = output_dir / f"aggregated_evaluation_iter{experiment_iteration}.json"
+        with open(eval_output_file, 'w') as f:
+            json.dump(aggregated_eval, f, indent=2)
+        print(f"\nAggregated evaluation results saved to: {eval_output_file}")
+        
+        # Save evaluation summary as CSV
+        eval_summary_rows = []
+        for approach, stats in aggregated_eval.items():
+            for k in [1, 3, 5, 7, 10]:
+                if 'by_k' in stats and k in stats['by_k']:
+                    k_stats = stats['by_k'][k]
+                    row = {'approach': approach, 'k': k}
+                    for metric in ['Pre_ken', 'Del_ken', 'Pre_exp', 'Del_exp']:
+                        if metric in k_stats:
+                            row[f'{metric}_mean'] = k_stats[metric]['mean']
+                            row[f'{metric}_std'] = k_stats[metric]['std']
+                    eval_summary_rows.append(row)
+        
+        if eval_summary_rows:
+            eval_summary_df = pd.DataFrame(eval_summary_rows)
+            eval_summary_csv = output_dir / f"evaluation_summary_iter{experiment_iteration}.csv"
+            eval_summary_df.to_csv(eval_summary_csv, index=False)
+            print(f"Evaluation summary CSV saved to: {eval_summary_csv}")
+        
+        # Create combined report comparing baseline vs adaptive
+        if 'rankingshapK' in aggregated_eval and 'rankingshapK_adaptive' in aggregated_eval:
+            print_combined_report(aggregated_timing, aggregated_eval)
+    else:
+        print("\nWarning: Could not aggregate evaluation results. They may not have been saved yet.")
+        print("If evaluation has already run, you may need to re-run the evaluation step.")
     
     print("\n" + "="*80)
     print("AGGREGATION COMPLETE")

@@ -99,6 +99,7 @@ approaches = [
     "rankingshapK",
     "rankingshapW",
     "rankingshapK_adaptive",
+    "rankingshapK_adaptive_refined",
     "greedy_iter",
     "greedy_iter_full",
     "pointwise_lime",
@@ -182,6 +183,11 @@ if len(eval_df) == 0:
 mean_attribute_evaluation = pd.concat(eval_df)
 
 mean_attribute_evaluation = mean_attribute_evaluation.set_index(["approach"])
+
+# Save evaluation results to CSV file for aggregation
+eval_output_file = path_to_attribution_folder / "evaluation_results.csv"
+mean_attribute_evaluation.to_csv(eval_output_file)
+print(f"\nEvaluation results saved to: {eval_output_file}", flush=True)
 
 # evaluation_for_table = mean_attribute_evaluation[
 #     [

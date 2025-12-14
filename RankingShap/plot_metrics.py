@@ -65,7 +65,7 @@ proper_names = ["Preservation kendalltau", "Deletion kendalltau", \
 
 metric_dfs = []
 
-colours = {'greedy_iter': '#ffd166', 'random': '#a8d48a', 'rankingshapK': '#d6335c', 'rankingshapW': '#993399', 'rankingshapK_adaptive': '#ff8c42', 'greedy_iter_full': '#222222', 'pointwise_lime': '#99d6c2', 'pointwise_shap': '#bab2f7', 'rankinglime': '#f0b2c2'}
+colours = {'greedy_iter': '#ffd166', 'random': '#a8d48a', 'rankingshapK': '#d6335c', 'rankingshapW': '#993399', 'rankingshapK_adaptive': '#ff8c42', 'rankingshapK_adaptive_refined': '#ff6b9d', 'greedy_iter_full': '#222222', 'pointwise_lime': '#99d6c2', 'pointwise_shap': '#bab2f7', 'rankinglime': '#f0b2c2'}
 
 for metric in metrics:
     metric_dfs.append(mean[["approach", 'at', metric]])
