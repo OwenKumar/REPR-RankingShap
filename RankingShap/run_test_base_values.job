@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=TestBaseValues
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=02:00:00
+#SBATCH --output=/home/scur1739/logs/out-%x.%A.out
+
+module purge
+module load 2024
+module load Miniconda3/24.7.1-0
+module load jax/0.3.14-foss-2022a-CUDA-11.7.0
+module load CUDA/12.6.0
+
+source activate Rshap
+
+cd $HOME/git/REPR-RankingShap/RankingShap
+
+# Run base value comparison test
+# Tests on first 20 queries for speed
+# You can adjust --num_queries for faster/slower test
+# Add --ground_truth_file if you want quality comparison
+# --use_existing_baseline: Uses existing baseline from main results folder (scales timing)
+# --experiment_iteration: Iteration number for finding timing file (default: 1)
+srun python test_adaptive_base_values.py \
+    --model_file model_MQ2008 \
+    --dataset MQ2008 \
+    --fold 1 \
+    --num_queries 20 \
+    --base_values "25,30,40,50,60,80,100,120,150" \
+    --ground_truth_file feature_importance_approxiation__backgroundcount_100_nsamples_65536_means.csv \
+    --use_existing_baseline \
+    --experiment_iteration 1
+
+echo "Base value comparison complete!"
+echo "Check results/adaptive_base_comparison_fold1.json and .csv"
+
