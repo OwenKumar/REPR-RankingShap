@@ -395,6 +395,16 @@ for base in base_values:
             # The _eval.csv file has the correct format (query_number, feature_number columns)
             eval_attribution_file = Path(str(attribution_file).split(".")[0] + "_eval.csv")
             if eval_attribution_file.exists():
+                print(f"Evaluating quality using: {eval_attribution_file}", flush=True)
+                # Debug: Check file contents
+                try:
+                    test_df = pd.read_csv(eval_attribution_file, index_col=0)
+                    print(f"  Eval file has {len(test_df)} rows, columns: {list(test_df.columns)[:5]}...", flush=True)
+                    if 'query_number' in test_df.index.names or 'query_number' in test_df.columns:
+                        print(f"  Query numbers found: {test_df.index.get_level_values('query_number').unique()[:10] if 'query_number' in test_df.index.names else test_df['query_number'].unique()[:10]}", flush=True)
+                except Exception as debug_e:
+                    print(f"  Debug: Could not read eval file: {debug_e}", flush=True)
+                
                 quality_metrics = eval_feature_attribution(
                     attributes_to_evaluate=eval_attribution_file,
                     model=model.predict,
@@ -402,12 +412,23 @@ for base in base_values:
                     background=background_data.background_summary,
                     ground_truth_file_path=ground_truth_path,
                 )
+                print(f"Quality evaluation successful! Shape: {quality_metrics.shape}", flush=True)
             else:
                 print(f"Warning: Eval file not found: {eval_attribution_file}", flush=True)
+                print(f"  Looking for: {eval_attribution_file}", flush=True)
+                print(f"  Original file: {attribution_file}", flush=True)
                 quality_metrics = None
         except Exception as e:
-            print(f"Warning: Could not evaluate quality: {e}", flush=True)
+            import traceback
+            print(f"ERROR: Could not evaluate quality: {e}", flush=True)
+            print(f"Traceback:", flush=True)
+            traceback.print_exc()
             quality_metrics = None
+    else:
+        if not ground_truth_path:
+            print("Warning: Ground truth path not set", flush=True)
+        elif not ground_truth_path.exists():
+            print(f"Warning: Ground truth file not found: {ground_truth_path}", flush=True)
     
     # Calculate speedup vs baseline
     speedup_wall = baseline_wall_time / wall_clock_time if wall_clock_time > 0 else 0
@@ -467,12 +488,20 @@ for base in base_values:
     print(f"  Total time: {wall_clock_time:.2f}s")
     print(f"  Speedup vs baseline: {speedup_wall:.2f}x")
     print(f"  Avg samples per query: {avg_samples:.1f}")
-    if quality_metrics is not None:
+    if quality_metrics is not None and baseline_metrics is not None:
         print(f"  Quality metrics (k=10):")
-        print(f"    Pre_ken: {quality_metrics[k10_idx, 0]:.4f} (baseline: {baseline_metrics[k10_idx, 0]:.4f}, diff: {quality_diff['Pre_ken_diff']:+.4f})")
-        print(f"    Del_ken: {quality_metrics[k10_idx, 1]:.4f} (baseline: {baseline_metrics[k10_idx, 1]:.4f}, diff: {quality_diff['Del_ken_diff']:+.4f})")
-        print(f"    Pre_exp: {quality_metrics[k10_idx, 2]:.4f} (baseline: {baseline_metrics[k10_idx, 2]:.4f}, diff: {quality_diff['Pre_exp_diff']:+.4f})")
-        print(f"    Del_exp: {quality_metrics[k10_idx, 3]:.4f} (baseline: {baseline_metrics[k10_idx, 3]:.4f}, diff: {quality_diff['Del_exp_diff']:+.4f})")
+        print(f"    Pre_ken: {quality_metrics[k10_idx, 0]:.4f} (baseline: {baseline_metrics[k10_idx, 0]:.4f}, diff: {quality_diff.get('Pre_ken_diff', 0):+.4f})")
+        print(f"    Del_ken: {quality_metrics[k10_idx, 1]:.4f} (baseline: {baseline_metrics[k10_idx, 1]:.4f}, diff: {quality_diff.get('Del_ken_diff', 0):+.4f})")
+        print(f"    Pre_exp: {quality_metrics[k10_idx, 2]:.4f} (baseline: {baseline_metrics[k10_idx, 2]:.4f}, diff: {quality_diff.get('Pre_exp_diff', 0):+.4f})")
+        print(f"    Del_exp: {quality_metrics[k10_idx, 3]:.4f} (baseline: {baseline_metrics[k10_idx, 3]:.4f}, diff: {quality_diff.get('Del_exp_diff', 0):+.4f})")
+    elif quality_metrics is not None:
+        print(f"  Quality metrics (k=10) - NO BASELINE FOR COMPARISON:")
+        print(f"    Pre_ken: {quality_metrics[k10_idx, 0]:.4f}")
+        print(f"    Del_ken: {quality_metrics[k10_idx, 1]:.4f}")
+        print(f"    Pre_exp: {quality_metrics[k10_idx, 2]:.4f}")
+        print(f"    Del_exp: {quality_metrics[k10_idx, 3]:.4f}")
+    else:
+        print(f"  Quality metrics: NOT AVAILABLE (evaluation failed or ground truth missing)")
 
 # Create comparison table
 print(f"\n{'='*80}")
@@ -490,13 +519,40 @@ for _, row in df.iterrows():
     print(f"{int(row['base']):<8} {row['total_wall_time']:<12.2f} {row['speedup_wall']:<12.2f} {row['avg_samples_per_query']:<15.1f}")
 
 # Print quality comparison if available
-if baseline_metrics is not None and any(df['Pre_ken'].notna()):
+has_quality_data = any(df['Pre_ken'].notna()) if 'Pre_ken' in df.columns else False
+if baseline_metrics is not None and has_quality_data:
     print(f"\n{'='*80}")
     print("QUALITY COMPARISON (vs Baseline RankingSHAP, k=10):")
     print(f"{'='*80}\n")
     print(f"{'Base':<8} {'Pre_ken':<12} {'Del_ken':<12} {'Pre_exp':<12} {'Del_exp':<12} {'Quality Score':<15}")
     print("-" * 80)
     for _, row in df.iterrows():
+        if pd.notna(row.get('Pre_ken')):
+            print(f"{int(row['base']):<8} {row['Pre_ken']:<12.4f} {row['Del_ken']:<12.4f} {row['Pre_exp']:<12.4f} {row['Del_exp']:<12.4f} {row.get('overall_score', 'N/A'):<15.4f}")
+        else:
+            print(f"{int(row['base']):<8} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<15}")
+elif has_quality_data:
+    print(f"\n{'='*80}")
+    print("QUALITY METRICS (k=10) - NO BASELINE FOR COMPARISON:")
+    print(f"{'='*80}\n")
+    print(f"{'Base':<8} {'Pre_ken':<12} {'Del_ken':<12} {'Pre_exp':<12} {'Del_exp':<12}")
+    print("-" * 60)
+    for _, row in df.iterrows():
+        if pd.notna(row.get('Pre_ken')):
+            print(f"{int(row['base']):<8} {row['Pre_ken']:<12.4f} {row['Del_ken']:<12.4f} {row['Pre_exp']:<12.4f} {row['Del_exp']:<12.4f}")
+        else:
+            print(f"{int(row['base']):<8} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<12}")
+else:
+    print(f"\n{'='*80}")
+    print("QUALITY METRICS: NOT AVAILABLE")
+    print(f"{'='*80}")
+    print("Quality evaluation failed for all base values.")
+    print("Possible reasons:")
+    print("  - Ground truth file not found or incorrect path")
+    print("  - Eval CSV files not created properly")
+    print("  - Query mismatch between attribution and ground truth")
+    print(f"  - Check: {ground_truth_path if 'ground_truth_path' in locals() else 'N/A'}")
+    print(f"{'='*80}\n")
         if pd.notna(row.get('Pre_ken')):
             pre_ken = f"{row['Pre_ken']:.4f}"
             del_ken = f"{row['Del_ken']:.4f}"
