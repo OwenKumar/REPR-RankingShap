@@ -175,8 +175,17 @@ if args.use_existing_baseline:
             existing_timing = json.load(f)
         
         # Count queries in existing baseline attribution file
+        # The CSV format can be either:
+        # 1. Original format: feature_number as index, query IDs as columns
+        # 2. Eval format: query_number and feature_number as columns
         baseline_df = pd.read_csv(baseline_attribution_file, index_col=0)
-        num_queries_in_baseline = baseline_df['query_number'].nunique()
+        
+        # Check if it's in eval format (has query_number column)
+        if 'query_number' in baseline_df.columns:
+            num_queries_in_baseline = baseline_df['query_number'].nunique()
+        else:
+            # Original format: count columns (each column is a query ID)
+            num_queries_in_baseline = len(baseline_df.columns)
         
         # Get timing from existing file (look for rankingshapK entry)
         baseline_timing_data = None
