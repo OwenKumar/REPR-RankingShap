@@ -170,6 +170,13 @@ if args.use_existing_baseline:
         shutil.copy2(existing_baseline_attribution, baseline_attribution_file)
         print(f"Copied baseline attribution file to: {baseline_attribution_file}", flush=True)
         
+        # Also check if there's a corresponding _eval.csv file and copy it
+        baseline_eval_source = Path(str(existing_baseline_attribution).split(".")[0] + "_eval.csv")
+        if baseline_eval_source.exists():
+            baseline_eval_file = Path(str(baseline_attribution_file).split(".")[0] + "_eval.csv")
+            shutil.copy2(baseline_eval_source, baseline_eval_file)
+            print(f"Copied baseline eval file to: {baseline_eval_file}", flush=True)
+        
         # Load timing and scale it
         with open(existing_baseline_timing, 'r') as f:
             existing_timing = json.load(f)
@@ -291,8 +298,15 @@ if args.ground_truth_file:
     if ground_truth_path.exists():
         print("\nEvaluating baseline against ground truth...", flush=True)
         try:
+            # Try to use _eval.csv file if it exists, otherwise use the original file
+            baseline_eval_file = Path(str(baseline_attribution_file).split(".")[0] + "_eval.csv")
+            if not baseline_eval_file.exists():
+                # If _eval.csv doesn't exist, use the original file
+                # eval_feature_attribution should handle the format conversion
+                baseline_eval_file = baseline_attribution_file
+            
             baseline_metrics = eval_feature_attribution(
-                attributes_to_evaluate=baseline_attribution_file,
+                attributes_to_evaluate=baseline_eval_file,
                 model=model.predict,
                 eval_data=eval_data,  # Use same eval_data (limited queries)
                 background=background_data.background_summary,
@@ -374,16 +388,23 @@ for base in base_values:
         avg_cpu_time = 0
     
     # Evaluate quality if ground truth available
+    # Use the _eval.csv file created by calculate_all_query_explanations
     quality_metrics = None
     if ground_truth_path and ground_truth_path.exists():
         try:
-            quality_metrics = eval_feature_attribution(
-                attributes_to_evaluate=attribution_file,
-                model=model.predict,
-                eval_data=eval_data,  # Use same eval_data (limited queries)
-                background=background_data.background_summary,
-                ground_truth_file_path=ground_truth_path,
-            )
+            # The _eval.csv file has the correct format (query_number, feature_number columns)
+            eval_attribution_file = Path(str(attribution_file).split(".")[0] + "_eval.csv")
+            if eval_attribution_file.exists():
+                quality_metrics = eval_feature_attribution(
+                    attributes_to_evaluate=eval_attribution_file,
+                    model=model.predict,
+                    eval_data=eval_data,  # Use same eval_data (limited queries)
+                    background=background_data.background_summary,
+                    ground_truth_file_path=ground_truth_path,
+                )
+            else:
+                print(f"Warning: Eval file not found: {eval_attribution_file}", flush=True)
+                quality_metrics = None
         except Exception as e:
             print(f"Warning: Could not evaluate quality: {e}", flush=True)
             quality_metrics = None
