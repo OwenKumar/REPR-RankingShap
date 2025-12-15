@@ -1,8 +1,7 @@
 """
-Corrected evaluation script for RankingSHAP text experiments.
+Optimized evaluation script for RankingSHAP text experiments.
 
-Evaluates fidelity and weighted fidelity as per the RankSHAP paper.
-Supports evaluating at different top-K levels (10, 20, 100).
+Matches original evaluation logic exactly but much faster.
 """
 
 import argparse
@@ -30,17 +29,37 @@ def weighted_kendalls_tau(a, b):
 
 class TextRankingSHAPEvaluator:
     def __init__(self, query_data_path):
-        """
-        Initialize evaluator with cached query data.
-
-        Args:
-            query_data_path: Path to JSONL file with query data from generation
-        """
         self.query_data = self._load_query_data(query_data_path)
         print(f"Loaded {len(self.query_data)} queries from {query_data_path}")
 
+        # Pre-compute everything needed per query
+        print("Pre-computing feature matrices and BM25 scores...")
+        self.feature_matrices = {}
+        self.bm25_scores = {}  # Store actual BM25 scores per document
+
+        for qid, record in self.query_data.items():
+            docs = record["documents"]
+            query_text = record["query_text"]
+            vocabulary = record.get("vocabulary", None)
+
+            if vocabulary is None:
+                vocabulary = sorted(
+                    list(set([w for doc in docs for w in tokenize_and_stem(doc)]))
+                )
+                record["vocabulary"] = vocabulary
+
+            # Build feature matrix
+            feature_matrix = self._build_feature_matrix(docs, vocabulary)
+            self.feature_matrices[qid] = feature_matrix
+
+            # Compute BM25 scores for all documents
+            model = BM25Wrapper(docs)
+            model.set_query(query_text, vocabulary)
+            self.bm25_scores[qid] = model.predict(feature_matrix)
+
+        print("  Done.")
+
     def _load_query_data(self, path):
-        """Load query data from JSONL file."""
         data = {}
         if not Path(path).exists():
             print(f"Warning: Query data file {path} not found.")
@@ -55,150 +74,125 @@ class TextRankingSHAPEvaluator:
                     continue
         return data
 
-    def evaluate(self, attribution_file, top_k=None):
+    def evaluate_all(self, attribution_file, top_k_values):
         """
-        Evaluate attributions using Fidelity and wFidelity.
-
-        Args:
-            attribution_file: Path to CSV with attributions
-            top_k: Optional, only consider top-K documents for evaluation
-                   (None means use all documents)
-
-        Returns:
-            Tuple of (mean_fidelity, mean_weighted_fidelity)
+        Evaluate all top_k values efficiently.
         """
         print(f"\nEvaluating {attribution_file}")
-        if top_k:
-            print(f"  Focusing on top-{top_k} documents")
 
-        # Load attributions
         if not Path(attribution_file).exists():
             print(f"  File not found!")
-            return np.nan, np.nan
+            return {k: (np.nan, np.nan) for k in top_k_values}
 
         df = pd.read_csv(attribution_file)
 
         if "query_number" not in df.columns:
             print("  Error: 'query_number' column not found.")
-            return np.nan, np.nan
+            return {k: (np.nan, np.nan) for k in top_k_values}
 
-        fidelities = []
-        w_fidelities = []
+        # Initialize results storage
+        results = {k: {"fidelities": [], "w_fidelities": []} for k in top_k_values}
 
         grouped = df.groupby("query_number")
 
         for qid, group in grouped:
-            # Get query data
             if qid not in self.query_data:
                 continue
 
             record = self.query_data[qid]
             docs = record["documents"]
-            query_text = record["query_text"]
-            vocabulary = record.get("vocabulary", None)
+            vocabulary = record["vocabulary"]
+            n_docs = len(docs)
 
-            # If vocabulary wasn't saved, rebuild it (backwards compatibility)
-            if vocabulary is None:
-                vocabulary = sorted(
-                    list(set([w for doc in docs for w in tokenize_and_stem(doc)]))
-                )
-
-            if len(docs) < 2:
+            if n_docs < 2:
                 continue
 
-            # Determine which documents to evaluate
-            if top_k and top_k < len(docs):
-                # Get original ranking and take top-K
-                orig_ranking = record.get("original_ranking", None)
-                if orig_ranking is None:
-                    # Compute original ranking if not saved
-                    model = BM25Wrapper(docs)
-                    model.set_query(query_text, vocabulary)
-                    input_matrix = self._build_feature_matrix(docs, vocabulary)
-                    orig_scores = model.predict(input_matrix)
-                    orig_ranking = np.argsort(orig_scores)[::-1]
+            # Get pre-computed data
+            feature_matrix = self.feature_matrices[qid]
+            bm25_scores = self.bm25_scores[qid]
 
-                # Take only top-K document indices
-                eval_doc_indices = list(orig_ranking[:top_k])
-            else:
-                eval_doc_indices = list(range(len(docs)))
+            # Get original ranking from BM25 scores
+            orig_ranking = np.argsort(bm25_scores)[::-1]
 
-            n_eval_docs = len(eval_doc_indices)
-            if n_eval_docs < 2:
-                continue
-
-            # Get documents for evaluation
-            eval_docs = [docs[i] for i in eval_doc_indices]
-
-            # Rebuild BM25 for evaluation docs
-            # Note: For fair comparison, we should use the same IDF as original
-            # Here we use the full corpus for IDF consistency
-            model = BM25Wrapper(docs)  # Use all docs for IDF
-            model.set_query(query_text, vocabulary)
-
-            # Build feature matrix for evaluation documents
-            input_matrix = self._build_feature_matrix(eval_docs, vocabulary)
-
-            # Get original ranking for evaluation documents
-            orig_scores = []
-            for idx in eval_doc_indices:
-                doc = docs[idx]
-                doc_vector = [
-                    1 if w in set(tokenize_and_stem(doc)) else 0 for w in vocabulary
-                ]
-                score = model.predict(np.array([doc_vector]))[0]
-                orig_scores.append(score)
-            orig_scores = np.array(orig_scores)
-
-            local_indices = np.arange(n_eval_docs)
-            orig_ranking_local = local_indices[np.argsort(orig_scores)[::-1]]
-
-            # Get attributions and compute reconstruction scores
+            # Get attributions as dict
             attributions = dict(
                 zip(group["feature_number"], group["attribution_value"])
             )
 
-            recon_scores = []
-            for i, doc_idx in enumerate(eval_doc_indices):
-                score = 0.0
-                doc_vector = input_matrix[i]
-                for feat_idx, is_present in enumerate(doc_vector):
-                    if is_present == 1:
-                        score += attributions.get(feat_idx, 0.0)
-                recon_scores.append(score)
+            # Compute reconstruction scores for ALL documents
+            recon_scores = np.zeros(n_docs)
+            for doc_idx in range(n_docs):
+                doc_vector = feature_matrix[doc_idx]
+                score = sum(
+                    attributions.get(feat_idx, 0.0)
+                    for feat_idx, is_present in enumerate(doc_vector)
+                    if is_present == 1
+                )
+                recon_scores[doc_idx] = score
 
-            recon_ranking_local = local_indices[np.argsort(recon_scores)[::-1]]
+            # Evaluate for each top_k
+            for top_k in top_k_values:
+                if top_k >= n_docs:
+                    eval_doc_indices = list(range(n_docs))
+                else:
+                    # Take top-k from original ranking
+                    eval_doc_indices = list(orig_ranking[:top_k])
 
-            # Convert to rank vectors for correlation
-            rank_vector_orig = np.zeros(n_eval_docs, dtype=int)
-            rank_vector_recon = np.zeros(n_eval_docs, dtype=int)
+                n_eval = len(eval_doc_indices)
+                if n_eval < 2:
+                    continue
 
-            for r, doc_idx in enumerate(orig_ranking_local):
-                rank_vector_orig[doc_idx] = r
-            for r, doc_idx in enumerate(recon_ranking_local):
-                rank_vector_recon[doc_idx] = r
+                # Get BM25 scores for eval documents
+                orig_scores_subset = bm25_scores[eval_doc_indices]
+                recon_scores_subset = recon_scores[eval_doc_indices]
 
-            # Compute metrics
-            tau = kendalls_tau(rank_vector_orig, rank_vector_recon)
-            w_tau = weighted_kendalls_tau(rank_vector_orig, rank_vector_recon)
+                # Compute local rankings (within the eval set)
+                local_indices = np.arange(n_eval)
+                orig_ranking_local = local_indices[np.argsort(orig_scores_subset)[::-1]]
+                recon_ranking_local = local_indices[
+                    np.argsort(recon_scores_subset)[::-1]
+                ]
 
-            if not np.isnan(tau):
-                fidelities.append(tau)
-                w_fidelities.append(w_tau)
+                # Convert to rank vectors for correlation
+                rank_vector_orig = np.zeros(n_eval, dtype=int)
+                rank_vector_recon = np.zeros(n_eval, dtype=int)
 
-        if not fidelities:
-            return np.nan, np.nan
+                for r, idx in enumerate(orig_ranking_local):
+                    rank_vector_orig[idx] = r
+                for r, idx in enumerate(recon_ranking_local):
+                    rank_vector_recon[idx] = r
 
-        return np.mean(fidelities), np.mean(w_fidelities)
+                # Compute metrics
+                tau = kendalls_tau(rank_vector_orig, rank_vector_recon)
+                w_tau = weighted_kendalls_tau(rank_vector_orig, rank_vector_recon)
+
+                if not np.isnan(tau):
+                    results[top_k]["fidelities"].append(tau)
+                    results[top_k]["w_fidelities"].append(w_tau)
+
+        # Compute means
+        final_results = {}
+        for k in top_k_values:
+            fids = results[k]["fidelities"]
+            w_fids = results[k]["w_fidelities"]
+            if fids:
+                final_results[k] = (np.mean(fids), np.mean(w_fids))
+            else:
+                final_results[k] = (np.nan, np.nan)
+
+        return final_results
 
     def _build_feature_matrix(self, docs, vocabulary):
         """Build binary feature matrix for documents."""
-        matrix = []
-        for doc in docs:
+        vocab_idx = {w: i for i, w in enumerate(vocabulary)}
+
+        matrix = np.zeros((len(docs), len(vocabulary)), dtype=np.int8)
+        for doc_idx, doc in enumerate(docs):
             doc_words = set(tokenize_and_stem(doc))
-            row = [1 if w in doc_words else 0 for w in vocabulary]
-            matrix.append(row)
-        return np.array(matrix)
+            for word in doc_words:
+                if word in vocab_idx:
+                    matrix[doc_idx, vocab_idx[word]] = 1
+        return matrix
 
 
 def main():
@@ -210,14 +204,13 @@ def main():
         type=int,
         nargs="+",
         default=[10, 20, 100],
-        help="Top-K values to evaluate (e.g., 10 20 100)",
+        help="Top-K values to evaluate",
     )
     args = parser.parse_args()
 
     experiment_tag = f"q{args.num_queries}_docs{args.num_docs}"
     results_dir = Path("results/results_MSMARCO/feature_attributes")
 
-    # Path to query data
     query_data_path = results_dir / f"query_data_{experiment_tag}.jsonl"
 
     if not query_data_path.exists():
@@ -227,17 +220,18 @@ def main():
 
     evaluator = TextRankingSHAPEvaluator(query_data_path)
 
-    # Attribution file to evaluate
     attr_file = results_dir / f"rankingshap_text_bm25_{experiment_tag}_eval.csv"
+
+    # Evaluate all top_k values in single pass
+    all_results = evaluator.evaluate_all(str(attr_file), args.top_k)
 
     print("\n" + "=" * 70)
     print(f"{'Method':<40} | {'Top-K':<8} | {'Fidelity':<10} | {'wFidelity':<10}")
     print("=" * 70)
 
     results = []
-
     for k in args.top_k:
-        fid, w_fid = evaluator.evaluate(str(attr_file), top_k=k)
+        fid, w_fid = all_results[k]
         print(f"{'RankingSHAP':<40} | {k:<8} | {fid:<10.4f} | {w_fid:<10.4f}")
         results.append(
             {
