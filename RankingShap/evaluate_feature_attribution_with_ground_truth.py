@@ -59,14 +59,20 @@ fold = args.fold
 
 # We assume that the model has been trained and saved in a model file
 model_file = args.model_file
+# Include fold in model file name if not already present
+if f"_fold{fold}" not in model_file:
+    model_file_with_fold = f"{model_file}_fold{fold}"
+else:
+    model_file_with_fold = model_file
 
 model = lightgbm.Booster(
-    model_file=(str((Path("results/model_files/") / model_file).absolute()))
+    model_file=(str((Path("results/model_files/") / model_file_with_fold).absolute()))
 )
 
+# Load fold-specific background data
 background_data = BackgroundData(
     np.load(
-        Path("results/background_data_files/train_background_data_" + dataset + ".npy")
+        Path(f"results/background_data_files/train_background_data_{dataset}_fold{fold}.npy")
     ),
     summarization_type=None,
 )
@@ -83,7 +89,8 @@ test_data = get_data(data_file=data_directory / "test.txt")
 
 
 file_name_ground_truth = args.file_name_ground_truth
-path_to_attribution_folder = Path("results/results_" + dataset + "/feature_attributes/")
+# Include fold in output folder path
+path_to_attribution_folder = Path(f"results/results_{dataset}_fold{fold}/feature_attributes/")
 
 path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_truth
 
@@ -91,6 +98,8 @@ path_to_ground_truth_attributes = path_to_attribution_folder / file_name_ground_
 approaches = [
     "rankingshapK",
     "rankingshapW",
+    "rankingshapK_adaptive",
+    "rankingshapK_adaptive_refined",
     "greedy_iter",
     "greedy_iter_full",
     "pointwise_lime",
@@ -107,6 +116,8 @@ if args.test:
     approaches = [a + "_test" for a in approaches]
 
 eval_df = []
+processed_approaches = []
+skipped_approaches = []
 
 
 for approach in approaches:
@@ -114,32 +125,69 @@ for approach in approaches:
         approach + "_eval" + ".csv"
     )
 
-    mean_attribute_evaluation = eval_feature_attribution(
-        attributes_to_evaluate=path_to_attribute_values,
-        model = model.predict,
-        eval_data=test_data,
-        background = background_data.background_summary,
-        ground_truth_file_path=path_to_ground_truth_attributes,
-    )
+    # Check if file exists before processing
+    if not path_to_attribute_values.exists():
+        print(f"Warning: File not found: {path_to_attribute_values}, skipping approach '{approach}'", flush=True)
+        skipped_approaches.append(approach)
+        continue
 
-    # mean_attribute_evaluation = attribution_evaluation_per_query.mean()
-    # mean_attribute_evaluation["approach"] = approach
+    try:
+        mean_attribute_evaluation = eval_feature_attribution(
+            attributes_to_evaluate=path_to_attribute_values,
+            model = model.predict,
+            eval_data=test_data,
+            background = background_data.background_summary,
+            ground_truth_file_path=path_to_ground_truth_attributes,
+        )
+
+        # mean_attribute_evaluation = attribution_evaluation_per_query.mean()
+        # mean_attribute_evaluation["approach"] = approach
+        
+
+        df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1], \
+                           'Pre_exp': mean_attribute_evaluation[:, 2], 'Del_exp': mean_attribute_evaluation[:, 3]})
+
+        df.insert(0, "approach", ["{}@{}".format(approach, i) for i in [1,3,5,7,10] ])
+
+        eval_df.append(df)
+        processed_approaches.append(approach)
+        print(f"Successfully processed approach: '{approach}'", flush=True)
     
+    except Exception as e:
+        print(f"Error processing approach '{approach}': {e}", flush=True)
+        print(f"Skipping approach '{approach}' due to error", flush=True)
+        skipped_approaches.append(approach)
+        continue
 
-    df = pd.DataFrame({'Pre_ken': mean_attribute_evaluation[:, 0], 'Del_ken': mean_attribute_evaluation[:, 1], \
-                       'Pre_exp': mean_attribute_evaluation[:, 2], 'Del_exp': mean_attribute_evaluation[:, 3]})
+# Print summary statistics
+print("\n" + "="*60, flush=True)
+print("Evaluation Summary:", flush=True)
+print(f"  Total approaches in list: {len(approaches)}", flush=True)
+print(f"  Successfully processed: {len(processed_approaches)}", flush=True)
+print(f"  Skipped (missing files or errors): {len(skipped_approaches)}", flush=True)
+if processed_approaches:
+    print(f"  Processed approaches: {', '.join(processed_approaches)}", flush=True)
+if skipped_approaches:
+    print(f"  Skipped approaches: {', '.join(skipped_approaches)}", flush=True)
+print("="*60 + "\n", flush=True)
 
-    df.insert(0, "approach", ["{}@{}".format(approach, i) for i in [1,3,5,7,10] ])
-
-
-
-    eval_df.append(df)
-
-
+# Handle empty results gracefully
+if len(eval_df) == 0:
+    print("ERROR: No attribution files were found or processed successfully.", flush=True)
+    print("Please ensure that at least one attribution file exists in:", flush=True)
+    print(f"  {path_to_attribution_folder}", flush=True)
+    print("\nExpected file format: <approach_name>_eval.csv", flush=True)
+    print("Example: rankingshapK_adaptive_eval.csv", flush=True)
+    exit(1)
 
 mean_attribute_evaluation = pd.concat(eval_df)
 
 mean_attribute_evaluation = mean_attribute_evaluation.set_index(["approach"])
+
+# Save evaluation results to CSV file for aggregation
+eval_output_file = path_to_attribution_folder / "evaluation_results.csv"
+mean_attribute_evaluation.to_csv(eval_output_file)
+print(f"\nEvaluation results saved to: {eval_output_file}", flush=True)
 
 # evaluation_for_table = mean_attribute_evaluation[
 #     [

@@ -52,6 +52,13 @@ parser.add_argument(
     help="Which fold of the data to use.",
 )
 parser.add_argument("--test", action="store_true", help="If true runs only one query")
+parser.add_argument(
+    "--fold",
+    required=False,
+    type=int,
+    default=1,
+    help="Fold number to use (default: 1)",
+)
 
 
 args = parser.parse_args()
@@ -62,6 +69,7 @@ fold = args.fold
 experiment_iterations = args.experiment_iterations
 n_samples = 2**args.nsamples
 background_samples = args.background_samples
+fold = args.fold
 
 explanation_size = 5
 
@@ -83,11 +91,18 @@ rank_similarity_coefficient = lambda x, y: kendalltau(x, y)[0]
 
 # We assume that the model has been trained and saved in a model file
 model_file = str(args.model_file)
+# Include fold in model file name if not already present
+if f"_fold{fold}" not in model_file:
+    model_file_with_fold = f"{model_file}_fold{fold}"
+else:
+    model_file_with_fold = model_file
 model_directory = Path("results/model_files/")
-print(model_directory / model_file)
-model = lightgbm.Booster(model_file=str((model_directory / model_file).absolute()))
+print(model_directory / model_file_with_fold)
+model = lightgbm.Booster(model_file=str((model_directory / model_file_with_fold).absolute()))
 
-path_to_attribution_folder = Path("results/results_" + dataset + "/feature_attributes/")
+# Include fold in output folder path
+path_to_attribution_folder = Path(f"results/results_{dataset}_fold{fold}/feature_attributes/")
+path_to_attribution_folder.mkdir(parents=True, exist_ok=True)
 
 
 attributes = []

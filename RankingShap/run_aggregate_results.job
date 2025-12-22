@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=RShapAggregate
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=01:00:00
+#SBATCH --output=/home/scur1739/logs/out-%x.%A.out
+#SBATCH --dependency=afterok:JOBID1:JOBID2
+# Uncomment the dependency line above and replace JOBID1 and JOBID2 with actual job IDs
+# Or run this script manually after both fold jobs complete
+
+module purge
+module load 2024
+module load Miniconda3/24.7.1-0
+module load jax/0.3.14-foss-2022a-CUDA-11.7.0
+module load CUDA/12.6.0
+
+source activate Rshap
+
+cd $HOME/git/REPR-RankingShap/RankingShap
+
+# Create aggregated results directory
+mkdir -p results/results_MQ2008_aggregated
+
+# Run aggregation script
+srun python aggregate_fold_results.py --dataset MQ2008 --experiment_iteration 1 --num_folds 5
+
+echo "Aggregation complete! Results saved to results/results_MQ2008_aggregated/"
+
