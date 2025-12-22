@@ -1,5 +1,5 @@
 
-# RankingSHAP
+# Reproduction of RankingSHAP
 
 ## Description
 This repository contains a reproduction of RankingSHAP, discussed in the paper titled "RankingSHAP – Listwise Feature Attribution Explanations
