@@ -219,6 +219,6 @@ if __name__ == "__main__":
         print(f"This would improve accuracy but slow down computation")
     else:
         print("\nTo run this analysis:")
-        print("1. On Snellius: python analyze_query_distribution.py")
+        print("1. On SLURM: python analyze_query_distribution.py")
         print("2. From timing file: python analyze_query_distribution.py <path_to_timing_file.json>")
 

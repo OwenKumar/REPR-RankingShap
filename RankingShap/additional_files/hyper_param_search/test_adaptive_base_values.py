@@ -553,13 +553,13 @@ else:
     print("  - Query mismatch between attribution and ground truth")
     print(f"  - Check: {ground_truth_path if 'ground_truth_path' in locals() else 'N/A'}")
     print(f"{'='*80}\n")
-        if pd.notna(row.get('Pre_ken')):
-            pre_ken = f"{row['Pre_ken']:.4f}"
-            del_ken = f"{row['Del_ken']:.4f}"
-            pre_exp = f"{row['Pre_exp']:.4f}"
-            del_exp = f"{row['Del_exp']:.4f}"
-            q_score = f"{row.get('overall_score', 0):.4f}" if pd.notna(row.get('overall_score')) else "N/A"
-            print(f"{int(row['base']):<8} {pre_ken:<12} {del_ken:<12} {pre_exp:<12} {del_exp:<12} {q_score:<15}")
+    if pd.notna(row.get('Pre_ken')):
+        pre_ken = f"{row['Pre_ken']:.4f}"
+        del_ken = f"{row['Del_ken']:.4f}"
+        pre_exp = f"{row['Pre_exp']:.4f}"
+        del_exp = f"{row['Del_exp']:.4f}"
+        q_score = f"{row.get('overall_score', 0):.4f}" if pd.notna(row.get('overall_score')) else "N/A"
+        print(f"{int(row['base']):<8} {pre_ken:<12} {del_ken:<12} {pre_exp:<12} {del_exp:<12} {q_score:<15}")
     
     # Show differences
     print(f"\n{'='*80}")

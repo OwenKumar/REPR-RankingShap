@@ -52,13 +52,6 @@ parser.add_argument(
     help="Which fold of the data to use.",
 )
 parser.add_argument("--test", action="store_true", help="If true runs only one query")
-parser.add_argument(
-    "--fold",
-    required=False,
-    type=int,
-    default=1,
-    help="Fold number to use (default: 1)",
-)
 
 
 args = parser.parse_args()

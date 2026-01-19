@@ -5,6 +5,7 @@ from scipy.stats import kendalltau, weightedtau
 from sklearn.datasets import load_svmlight_file
 import itertools
 import os
+import argparse
 
 
 def kendalls_tau(a, b):
@@ -184,20 +185,74 @@ class RankingSHAPEvaluator:
 # ==========================================
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Your script description")
+
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        required=True,
+        choices=["MSLR-WEB10K", "MQ2008"],
+        help="The dataset to use MQ2008 or MSLR-WEB10K",
+    )
+
+    parser.add_argument(
+        "--test", action="store_true", help="If true uses test files for evaluation"
+    )
+
+    parser.add_argument(
+        "--model_file",
+        required=True,
+        type=str,
+        help="Path to the model file of the model that we want to approximate the feature importance for",
+    )
+
+    parser.add_argument(
+        "--approach",
+        type=str,
+        default="all",
+        help="Choose to run a specific approach.",
+    )
+
+    parser.add_argument(
+        "--fold",
+        required=False,
+        type=int,
+        default=1,
+        help="Which fold of the data to use.",
+    )
+
+
+    args = parser.parse_args()
+    print(args, flush=True)
+
+    dataset = args.dataset
+    fold = args.fold
+
     # Update these paths if files are in a specific subdirectory
-    MODEL_FILE = "results/model_files/model_MQ2008"
-    DATASET_FILE = "data/MQ2008/Fold1/test.txt"  # Use 'test.txt' from your upload
+    MODEL_FILE = args.model_file
+    DATASET_FILE = f"data/{dataset}/Fold{fold}/test.txt"  # Use 'test.txt' from your upload
 
     # List of attribution files you uploaded
-    ATTRIBUTION_FILES = [
-        "rankingshap_eval.csv",
-        "rankingshapK_adaptive_eval.csv",
-        "rankinglime_eval.csv",
-        "pointwise_lime_eval.csv",
-        "pointwise_shap_eval.csv",
-        "greedy_iter_full_eval.csv",
-        "random_eval.csv",
+    approaches = [
+        "rankingshapK",
+        "rankingshapW",
+        "rankingshapK_adaptive",
+        "rankingshapK_adaptive_refined"
+        "rankinglime",
+        "pointwise_lime",
+        "pointwise_shap",
+        "greedy_iter_full",
+        "random",
     ]
+
+    if args.approach in approaches:
+        approaches = [args.approach]
+
+    if args.test:
+        ATTRIBUTION_FILES = [x + "_test_eval.csv" for x in approaches]
+    else:
+        ATTRIBUTION_FILES = [x + "_eval.csv" for x in approaches]
+
 
     # Initialize Evaluator
     # We explicitly set n_features=46 for MQ2008

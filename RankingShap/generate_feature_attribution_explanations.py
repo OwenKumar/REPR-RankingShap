@@ -41,7 +41,10 @@ parser.add_argument(
     type=int,
     help="Enables us to run the same experiment several times",
 )
-parser.add_argument("--test", action="store_true", help="If true runs only one query")
+parser.add_argument(
+    "--test", 
+    action="store_true", 
+    help="If true runs only one query")
 
 parser.add_argument(
     "--approach",
@@ -181,18 +184,6 @@ ranking_lime_explainer = RankingLIME(
 #     rank_similarity_coefficient=rank_similarity_coefficient,
 # )
 
-explainers = [
-    random_explainer,
-    aggregated_shap_explainer,
-    aggregated_lime_explainer,
-    ranking_shapK_explainer,
-    ranking_shapW_explainer,
-    greedy_explainer_0_iter,
-    ranking_lime_explainer,
-    # ranking_sharp_explainer,
-]
-
-explainers = []
 
 # Add adaptive RankingSHAP for MQ2008 testing
 # Uses sqrt-based sampling: samples = base * sqrt(n_docs)
@@ -206,7 +197,7 @@ ranking_shapK_adaptive_explainer = RankingShapAdaptive(
     adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule
     adaptive_max_samples=300,  # Hard upper cap on samples
 )
-explainers.append(ranking_shapK_adaptive_explainer)
+
 
 # Add two-stage adaptive refined RankingSHAP
 # Stage 1: Adaptive sampling to identify top features
@@ -223,28 +214,28 @@ ranking_shapK_adaptive_refined_explainer = RankingShapAdaptiveRefined(
     top_k_to_refine=10,  # Number of top features to refine
     refinement_samples="auto",  # Stage 2: High-quality sampling like baseline RankingSHAP
 )
-explainers.append(ranking_shapK_adaptive_refined_explainer)
 
-# Add two-stage adaptive refined RankingSHAP
-# Stage 1: Adaptive sampling to identify top features
-# Stage 2: Refine top-k features with high-quality sampling
-ranking_shapK_adaptive_refined_explainer = RankingShapAdaptiveRefined(
-    permutation_sampler="kernel",
-    background_data=background_data.background_summary,
-    original_model=model.predict,
-    explanation_size=explanation_size,
-    name="rankingshapK_adaptive_refined",
-    rank_similarity_coefficient=rank_similarity_coefficient,
-    adaptive_min_samples=25,  # Base factor for sqrt(n_docs) rule (Stage 1 - like adaptive)
-    adaptive_max_samples=300,  # Hard upper cap on samples (Stage 1 - like adaptive)
-    top_k_to_refine=10,  # Number of top features to refine
-    refinement_samples="auto",  # Stage 2: High-quality sampling like baseline RankingSHAP
-)
-explainers.append(ranking_shapK_adaptive_refined_explainer)
+
+explainers = [
+    ranking_shapK_adaptive_explainer,
+    ranking_shapK_adaptive_refined_explainer,
+    random_explainer,
+    aggregated_shap_explainer,
+    aggregated_lime_explainer,
+    ranking_shapK_explainer,
+    ranking_shapW_explainer,
+    greedy_explainer_0_iter,
+    ranking_lime_explainer,
+    # ranking_sharp_explainer,
+]
+
+
 
 names = {explainer.name: explainer for explainer in explainers}
 if args.approach in names:
     explainers = [names[args.approach]]
+
+# ======================================================================================================================
 
 # Track timing results for comparison
 timing_results = []
