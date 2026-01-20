@@ -93,7 +93,7 @@ train_data = get_data(data_file=data_directory / "train.txt")
 test_data = get_data(data_file=data_directory / "test.txt")
 eval_data = get_data(data_file=data_directory / "vali.txt")
 
-path_to_attribution_folder = Path("results/results_" + dataset + "/feature_attributes/")
+path_to_attribution_folder = Path("results/results_" + dataset + f"_fold{fold}"+ "/feature_attributes/")
 
 num_features = len(test_data[0][0])
 
