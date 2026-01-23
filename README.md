@@ -25,10 +25,11 @@ Navigate to the cloned repository directory:
 ```
 cd REPR-RankingShap/RankingShap
 ```
-Create a virtual environment on your machine and install the dependencies
+Create a virtual environment on your machine and install the dependencies:
 ```
 pip install -r requirements.txt
 ```
+The code is tested for python 3.11.
 
 ### Collecting Data
 Before running the scripts, ensure you have collected all the necessary data. For our paper we have tested two datasets
