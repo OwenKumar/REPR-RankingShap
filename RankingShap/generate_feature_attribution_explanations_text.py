@@ -257,19 +257,26 @@ def main():
         description="Generate RankingSHAP explanations (local data)"
     )
     parser.add_argument("--num_queries", type=int, default=250)
-    parser.add_argument("--num_docs", type=int, default=100)
+    parser.add_argument(
+        "--num_docs",
+        type=int,
+        nargs="+",
+        default=[10, 20, 100],
+        help="Top-K values to evaluate",
+    )
     parser.add_argument("--nsamples", type=int, default=5000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--data_dir", type=str, default="data")
     args = parser.parse_args()
 
-    generate_explanations(
-        num_queries=args.num_queries,
-        num_docs=args.num_docs,
-        nsamples=args.nsamples,
-        seed=args.seed,
-        data_dir=args.data_dir,
-    )
+    for k in args.num_docs:
+        generate_explanations(
+            num_queries=args.num_queries,
+            num_docs=k,
+            nsamples=args.nsamples,
+            seed=args.seed,
+            data_dir=args.data_dir,
+        )
 
 
 if __name__ == "__main__":

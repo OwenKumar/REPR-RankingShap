@@ -109,7 +109,7 @@ def main():
 
     gen_cmd = [
         sys.executable,
-        "generate_feature_attribution_explanations_text2.py",
+        "generate_feature_attribution_explanations_text.py",
         "--num_queries",
         str(args.num_queries),
         "--num_docs",
@@ -130,7 +130,7 @@ def main():
 
     eval_cmd = [
         sys.executable,
-        "evaluate_rankingshap_text_fidelity2.py",
+        "evaluate_rankingshap_text_fidelity.py",
         "--num_docs",
         str(args.num_docs),
         "--num_queries",
