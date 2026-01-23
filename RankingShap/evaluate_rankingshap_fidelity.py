@@ -230,6 +230,12 @@ if __name__ == "__main__":
 
     # Update these paths if files are in a specific subdirectory
     MODEL_FILE = args.model_file
+    # Include fold in model file name if not already present
+    if f"_fold{fold}" not in MODEL_FILE:
+        model_file_with_fold = f"{MODEL_FILE}_fold{fold}"
+    else:
+        model_file_with_fold = MODEL_FILE
+
     DATASET_FILE = f"data/{dataset}/Fold{fold}/test.txt"  # Use 'test.txt' from your upload
 
     # List of attribution files you uploaded
@@ -256,7 +262,7 @@ if __name__ == "__main__":
 
     # Initialize Evaluator
     # We explicitly set n_features=46 for MQ2008
-    evaluator = RankingSHAPEvaluator(MODEL_FILE, DATASET_FILE, n_features=46)
+    evaluator = RankingSHAPEvaluator(model_file_with_fold, DATASET_FILE, n_features=46)
 
     print(f"\n{'Method':<30} | {'Fidelity':<10} | {'wFidelity':<10}")
     print("-" * 56)

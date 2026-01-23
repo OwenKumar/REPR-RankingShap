@@ -225,6 +225,7 @@ explainers = [
     ranking_shapK_explainer,
     ranking_shapW_explainer,
     greedy_explainer_0_iter,
+    # greedy_explainer_0_full,
     ranking_lime_explainer,
     # ranking_sharp_explainer,
 ]
