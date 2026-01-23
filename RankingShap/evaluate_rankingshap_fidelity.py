@@ -6,6 +6,7 @@ from sklearn.datasets import load_svmlight_file
 import itertools
 import os
 import argparse
+from pathlib import Path
 
 
 def kendalls_tau(a, b):
@@ -235,6 +236,8 @@ if __name__ == "__main__":
         model_file_with_fold = f"{MODEL_FILE}_fold{fold}"
     else:
         model_file_with_fold = MODEL_FILE
+
+    model_file_with_fold = str((Path("results/model_files/") / model_file_with_fold).absolute())
 
     DATASET_FILE = f"data/{dataset}/Fold{fold}/test.txt"  # Use 'test.txt' from your upload
 

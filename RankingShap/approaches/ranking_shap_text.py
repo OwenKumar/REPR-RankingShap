@@ -109,9 +109,7 @@ class RankingShapText:
         # The explainer will toggle 1s to 0s (background) to measure impact
         shap_values = self.explainer.shap_values(
             instance_all_present, nsamples=self.nsamples
-        )[
-            0
-        ]  # shap_values returns list, we want the first (and only) output dimension
+        )[0]  # shap_values returns list, we want the first (and only) output dimension
 
         # 5. Format Results
         # Map index back to attribution score

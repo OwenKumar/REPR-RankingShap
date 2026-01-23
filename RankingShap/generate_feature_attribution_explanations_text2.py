@@ -38,6 +38,37 @@ def load_local_data(data_file: Path, num_queries: int = None) -> list:
                 break
     return data
 
+def build_vocabulary_with_query(query_text, docs):
+    """
+    Build vocabulary from BOTH query and documents.
+
+    Paper: "Stemmed tokens from the vocabulary of the query-document sets"
+    """
+    all_tokens = set()
+
+    # Add query tokens
+    for token in tokenize_and_stem(query_text):
+        all_tokens.add(token)
+
+    # Add document tokens
+    for doc in docs:
+        for token in tokenize_and_stem(doc):
+            all_tokens.add(token)
+
+    return sorted(list(all_tokens))
+
+def build_feature_matrix(docs, vocabulary):
+    """Build binary feature matrix for documents."""
+    vocab_idx = {w: i for i, w in enumerate(vocabulary)}
+    matrix = np.zeros((len(docs), len(vocabulary)), dtype=np.float32)
+
+    for doc_idx, doc in enumerate(docs):
+        doc_words = set(tokenize_and_stem(doc))
+        for word in doc_words:
+            if word in vocab_idx:
+                matrix[doc_idx, vocab_idx[word]] = 1
+
+    return matrix
 
 def generate_explanations(
     num_queries: int = 250,
@@ -132,15 +163,17 @@ def generate_explanations(
     for i, item in enumerate(data):
         query_id = item["query_id"]
         query_text = item["query_text"]
-        docs = item["documents"][:num_docs]
+        all_docs = item["documents"]
+        docs = all_docs[:num_docs]
+
+        if len(docs) < 2:
+            continue
 
         print(f"\nQuery {i+1}/{len(data)} (ID: {query_id})")
         print(f"  Query: {query_text[:60]}...")
 
         # Build vocabulary from ALL documents
-        vocabulary = sorted(
-            list(set([word for doc in docs for word in tokenize_and_stem(doc)]))
-        )
+        vocabulary = build_vocabulary_with_query(query_text, docs)
 
         print(f"  Documents: {len(docs)}")
         print(f"  Vocabulary size: {len(vocabulary)}")
@@ -150,12 +183,7 @@ def generate_explanations(
             continue
 
         # Build feature matrix for all documents
-        feature_matrix = []
-        for doc in docs:
-            doc_words = set(tokenize_and_stem(doc))
-            row = [1 if w in doc_words else 0 for w in vocabulary]
-            feature_matrix.append(row)
-        feature_matrix = np.array(feature_matrix)
+        feature_matrix = build_feature_matrix(docs, vocabulary)
 
         # Initialize BM25 wrapper
         model = BM25Wrapper(docs)
@@ -171,17 +199,10 @@ def generate_explanations(
         explainer.original_model = model.predict
 
         # Run RankingSHAP using the correct interface
-        try:
-            selection, attribution = explainer.get_query_explanation(
-                query_features=feature_matrix,
-                query_id=query_id,
-            )
-        except Exception as e:
-            print(f"  Error in SHAP: {e}")
-            import traceback
-
-            traceback.print_exc()
-            continue
+        selection, attribution = explainer.get_query_explanation(
+            query_features=feature_matrix,
+            query_id=query_id,
+        )
 
         # Save query data for evaluation
         query_record = {
