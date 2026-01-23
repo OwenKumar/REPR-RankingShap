@@ -270,7 +270,7 @@ if __name__ == "__main__":
     results_rows = []
 
     for csv_file in ATTRIBUTION_FILES:
-        file_path = "results/results_MQ2008/feature_attributes/" + csv_file
+        file_path = f"results/results_MQ2008_{fold}/feature_attributes/" + csv_file
         if os.path.exists(file_path):
             fid, w_fid = evaluator.evaluate(file_path)
             print(f"{csv_file:<30} | {fid:<10.4f} | {w_fid:<10.4f}")
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             )
 
     # Ensure output directory exists
-    out_dir = "results/results_MQ2008_fidelity"
+    out_dir = f"results/results_MQ2008_{fold}/fidelity"
     try:
         os.makedirs(out_dir, exist_ok=True)
     except Exception as e:
